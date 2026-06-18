@@ -1,0 +1,165 @@
+{
+    "recentlyVisitedProducts": [
+      {
+        "id": 1,
+        "name": "Smartphone XYZ",
+        "price": 599.99,
+        "category": "Electronics",
+        "rating": 4.3,
+        "reviewCount": 312
+      },
+      {
+        "id": 2,
+        "name": "Wireless Headphones",
+        "price": 129.99,
+        "category": "Electronics",
+        "rating": 4.3,
+        "reviewCount": 312
+      },
+      {
+        "id": 3,
+        "name": "Comfortable Running Shoes",
+        "price": 79.99,
+        "category": "Fashion",
+        "rating": 4.3,
+        "reviewCount": 312
+      },
+      {
+        "id": 4,
+        "name": "Gaming Laptop",
+        "price": 1499.99,
+        "category": "Electronics",
+        "rating": 4.3,
+        "reviewCount": 312
+      },
+      {
+        "id": 5,
+        "name": "Coffee Maker",
+        "price": 49.99,
+        "category": "Home & Kitchen",
+        "rating": 4.3,
+        "reviewCount": 312
+      },
+      {
+        "id": 6,
+        "name": "Men's Casual Shirt",
+        "price": 29.99,
+        "category": "Fashion",
+        "rating": 4.3,
+        "reviewCount": 312
+      },
+      {
+        "id": 7,
+        "name": "Fitness Tracker",
+        "price": 79.99,
+        "category": "Electronics",
+        "rating": 4.3,
+        "reviewCount": 312
+      },
+      {
+        "id": 8,
+        "name": "Leather Backpack",
+        "price": 59.99,
+        "category": "Fashion",
+        "rating": 4.3,
+        "reviewCount": 312
+      },
+      {
+        "id": 9,
+        "name": "4K Smart TV",
+        "price": 799.99,
+        "category": "Electronics",
+        "rating": 4.3,
+        "reviewCount": 312
+      },
+      {
+        "id": 10,
+        "name": "Home Security Camera",
+        "price": 129.99,
+        "category": "Home & Kitchen",
+        "rating": 4.3,
+        "reviewCount": 312
+      },
+      {
+        "id": 11,
+        "name": "Women's Running Shoes",
+        "price": 89.99,
+        "category": "Fashion",
+        "rating": 4.3,
+        "reviewCount": 312
+      },
+      {
+        "id": 12,
+        "name": "Bluetooth Speaker",
+        "price": 39.99,
+        "category": "Electronics",
+        "rating": 4.3,
+        "reviewCount": 312
+      },
+      {
+        "id": 13,
+        "name": "Portable Charger",
+        "price": 19.99,
+        "category": "Electronics",
+        "rating": 4.3,
+        "reviewCount": 312
+      },
+      {
+        "id": 14,
+        "name": "Designer Sunglasses",
+        "price": 69.99,
+        "category": "Fashion",
+        "rating": 4.3,
+        "reviewCount": 312
+      },
+      {
+        "id": 15,
+        "name": "Air Purifier",
+        "price": 129.99,
+        "category": "Home & Kitchen",
+        "rating": 4.3,
+        "reviewCount": 312
+      },
+      {
+        "id": 16,
+        "name": "Smart Thermostat",
+        "price": 89.99,
+        "category": "Electronics",
+        "rating": 4.3,
+        "reviewCount": 312
+      },
+      {
+        "id": 17,
+        "name": "Cookware Set",
+        "price": 149.99,
+        "category": "Home & Kitchen",
+        "rating": 4.3,
+        "reviewCount": 312
+      },
+      {
+        "id": 18,
+        "name": "Men's Formal Shoes",
+        "price": 49.99,
+        "category": "Fashion",
+        "rating": 4.3,
+        "reviewCount": 312
+      },
+      {
+        "id": 19,
+        "name": "Digital Camera",
+        "price": 499.99,
+        "category": "Electronics",
+        "rating": 4.3,
+        "reviewCount": 312
+      },
+      {
+        "id": 20,
+        "name": "Robot Vacuum Cleaner",
+        "price": 299.99,
+        "category": "Home & Kitchen",
+        "rating": 4.3,
+        "reviewCount": 312
+      }
+    ]
+  }
+  
