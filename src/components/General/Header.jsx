@@ -24,6 +24,11 @@ import {
   textScale,
 } from "../../utils/responsiveSize";
 import FontFamily from "../../utils/FontFamily";
+import {
+  getProductBrandId,
+  getProductCategoryId,
+  getProductSubCategoryId,
+} from "../../utils/productFields";
 const Header = ({
   title,
   onSort,
@@ -33,7 +38,7 @@ const Header = ({
   option,
   categories,
   filteredData,
-  originalData,
+  originalData = [],
 }) => {
   const navigation = useNavigation();
   const [modalVisible, setModalVisible] = useState(false);
@@ -53,19 +58,21 @@ const Header = ({
 
     // Use originalData instead of filteredData to always show all options
     const hasBoppTape = originalData.some(
-      (product) => product.category?._id === "6557df64301ec4f2f4266141"
+      (product) => getProductCategoryId(product) === "6557df64301ec4f2f4266141"
     );
     const hasPaperTape = originalData.some(
-      (product) => product.category?._id === "6557df71301ec4f2f4266145"
+      (product) => getProductCategoryId(product) === "6557df71301ec4f2f4266145"
     );
     const hasCarryHandleTape = originalData.some(
-      (product) => product.category?._id === "67cac1fc2a4e1c9ef44a92b5"
+      (product) => getProductCategoryId(product) === "67cac1fc2a4e1c9ef44a92b5"
     );
     const hasDirectThermal = originalData.some(
-      (product) => product.sub_category === "6557e1cb301ec4f2f426614c"
+      (product) =>
+        getProductSubCategoryId(product) === "6557e1cb301ec4f2f426614c"
     );
     const hasChromoLabel = originalData.some(
-      (product) => product.sub_category === "6557e236301ec4f2f4266154"
+      (product) =>
+        getProductSubCategoryId(product) === "6557e236301ec4f2f4266154"
     );
 
     if (hasBoppTape) {
@@ -113,14 +120,9 @@ const Header = ({
   const availableBrandIds = React.useMemo(() => {
     const brandIds = new Set();
     originalData?.forEach((product) => {
-      if (
-        product.brand &&
-        typeof product.brand === "object" &&
-        product.brand._id
-      ) {
-        brandIds.add(product.brand._id);
-      } else if (product.brand) {
-        brandIds.add(product.brand);
+      const brandId = getProductBrandId(product);
+      if (brandId) {
+        brandIds.add(brandId);
       }
     });
     return Array.from(brandIds);
@@ -130,8 +132,9 @@ const Header = ({
   useEffect(() => {
     const categoriesSet = new Set();
     originalData?.forEach((product) => {
-      if (product.category?._id) {
-        categoriesSet.add(product.category._id);
+      const categoryId = getProductCategoryId(product);
+      if (categoryId) {
+        categoriesSet.add(categoryId);
       }
     });
     setAvailableCategories(Array.from(categoriesSet));

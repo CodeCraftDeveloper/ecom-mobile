@@ -31,6 +31,10 @@ import FontFamily from "../utils/FontFamily";
 import StorageService from "../utils/storageService";
 import { parseStoredUser } from "../utils/HelperFunction";
 import WrapperContainer from "../utils/WrapperContainer";
+import {
+  getProductCategoryId,
+  getProductSubCategoryId,
+} from "../utils/productFields";
 
 function CustomDrawerContent(props) {
   const [expanded, setExpanded] = useState(false);
@@ -86,7 +90,7 @@ function CustomDrawerContent(props) {
     navigation.navigate("CategoryDetailsTwo", {
       categories: item,
       data: allProducts.filter(
-        (items) => items.category?._id === item?.category_id
+        (items) => getProductCategoryId(items) === item?.category_id
       ),
       option: "cat",
     });
@@ -110,7 +114,7 @@ function CustomDrawerContent(props) {
       navigation.navigate("CategoryDetailsTwo", {
         categories: item,
         data: allProducts.filter((product) =>
-          allTapeSubCategoryIds.includes(product.sub_category)
+          allTapeSubCategoryIds.includes(getProductSubCategoryId(product))
         ),
         option: "cat",
       });
@@ -119,7 +123,7 @@ function CustomDrawerContent(props) {
         categories: item,
         data: allProducts.filter((product) =>
           ["6557e1cb301ec4f2f426614c", "6557e236301ec4f2f4266154"].includes(
-            product.sub_category
+            getProductSubCategoryId(product)
           )
         ),
         option: "cat",
@@ -129,9 +133,9 @@ function CustomDrawerContent(props) {
         categories: item,
         data: allProducts.filter((product) => {
           if (item?.filterType === "category") {
-            return product.category?._id === item?.category_id;
+            return getProductCategoryId(product) === item?.category_id;
           }
-          return product.sub_category === item?.category_id;
+          return getProductSubCategoryId(product) === item?.category_id;
         }),
         option: "cat",
       });
@@ -283,6 +287,117 @@ function CustomDrawerContent(props) {
     );
   };
 
+  const renderDrawerFooter = () => {
+    return (
+      <View style={{ marginTop: moderateVerticalScale(15), paddingBottom: moderateVerticalScale(35) }}>
+        {/* Divider Line */}
+        <View style={styles.drawerDivider} />
+
+        <Text style={styles.drawerSectionHeader}>Info & Support</Text>
+
+        {/* Notifications */}
+        <TouchableOpacity
+          style={styles.drawerMenuItem}
+          onPress={() => {
+            closeDrawer();
+            navigation.navigate("Notifications");
+          }}
+        >
+          <View style={styles.drawerMenuItemLeft}>
+            <Feather name="bell" size={textScale(16)} color={Colors.brandColor} />
+            <Text style={styles.drawerMenuText}>Notifications</Text>
+          </View>
+          <Feather name="chevron-right" size={textScale(16)} color={Colors.brandColor} />
+        </TouchableOpacity>
+
+        {/* Settings */}
+        <TouchableOpacity
+          style={styles.drawerMenuItem}
+          onPress={() => {
+            closeDrawer();
+            navigation.navigate("Settings");
+          }}
+        >
+          <View style={styles.drawerMenuItemLeft}>
+            <Feather name="settings" size={textScale(16)} color={Colors.brandColor} />
+            <Text style={styles.drawerMenuText}>Settings</Text>
+          </View>
+          <Feather name="chevron-right" size={textScale(16)} color={Colors.brandColor} />
+        </TouchableOpacity>
+
+        {/* About Us */}
+        <TouchableOpacity
+          style={styles.drawerMenuItem}
+          onPress={() => {
+            closeDrawer();
+            navigation.navigate("About Us");
+          }}
+        >
+          <View style={styles.drawerMenuItemLeft}>
+            <Feather name="info" size={textScale(16)} color={Colors.brandColor} />
+            <Text style={styles.drawerMenuText}>About Us</Text>
+          </View>
+          <Feather name="chevron-right" size={textScale(16)} color={Colors.brandColor} />
+        </TouchableOpacity>
+
+        {/* Contact Us */}
+        <TouchableOpacity
+          style={styles.drawerMenuItem}
+          onPress={() => {
+            closeDrawer();
+            navigation.navigate("Contact Us");
+          }}
+        >
+          <View style={styles.drawerMenuItemLeft}>
+            <Feather name="phone" size={textScale(16)} color={Colors.brandColor} />
+            <Text style={styles.drawerMenuText}>Contact Us</Text>
+          </View>
+          <Feather name="chevron-right" size={textScale(16)} color={Colors.brandColor} />
+        </TouchableOpacity>
+
+        {/* Report Issue */}
+        <TouchableOpacity
+          style={styles.drawerMenuItem}
+          onPress={() => {
+            closeDrawer();
+            navigation.navigate("Report");
+          }}
+        >
+          <View style={styles.drawerMenuItemLeft}>
+            <Feather name="alert-circle" size={textScale(16)} color={Colors.brandColor} />
+            <Text style={styles.drawerMenuText}>Report an Issue</Text>
+          </View>
+          <Feather name="chevron-right" size={textScale(16)} color={Colors.brandColor} />
+        </TouchableOpacity>
+
+        {/* Divider */}
+        <View style={[styles.drawerDivider, { marginVertical: moderateVerticalScale(15) }]} />
+
+        {/* Direct Contacts */}
+        <TouchableOpacity
+          style={styles.iconHolder}
+          onPress={handleWhatsappClicked}
+        >
+          <FontAwesome
+            name="whatsapp"
+            color={Colors.red}
+            size={textScale(24)}
+          />
+          <Text style={[styles.nameText, { fontSize: textScale(14), paddingVertical: 0 }]}>
+            +918447247227
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.iconHolder} onPress={handleCallClicked}>
+          <Feather name="phone-call" color={Colors.red} size={textScale(24)} />
+          <Text style={[styles.nameText, { fontSize: textScale(14), paddingVertical: 0 }]}>
+            +918447247227
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   return (
     <WrapperContainer backgroundColor={Colors.forgetPassword}>
     <View style={{ flex: 1, backgroundColor: "white",marginTop:moderateVerticalScale(-25) }}>
@@ -317,32 +432,14 @@ function CustomDrawerContent(props) {
         </TouchableOpacity>
       </View>
       {/* Show the list */}
-      <View style={{ padding: moderateScale(10) }}>
+      <View style={{ flex: 1, padding: moderateScale(10) }}>
         <FlatList
           data={data}
           renderItem={renderItem}
           keyExtractor={(item, index) => index.toString()}
+          ListFooterComponent={renderDrawerFooter}
+          showsVerticalScrollIndicator={false}
         />
-        <TouchableOpacity
-          style={styles.iconHolder}
-          onPress={handleWhatsappClicked}
-        >
-          <FontAwesome
-            name="whatsapp"
-            color={Colors.red}
-            size={textScale(30)}
-          />
-          <Text style={[styles.nameText, { fontSize: textScale(16) }]}>
-            +918447247227
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.iconHolder} onPress={handleCallClicked}>
-          <Feather name="phone-call" color={Colors.red} size={textScale(30)} />
-          <Text style={[styles.nameText, { fontSize: textScale(16) }]}>
-            +918447247227
-          </Text>
-        </TouchableOpacity>
       </View>
     </View>
      </WrapperContainer>
@@ -434,5 +531,39 @@ const styles = StyleSheet.create({
     borderRadius: moderateScale(5),
     backgroundColor: Colors.yellow_background,
     borderColor: Colors.yellow_background,
+  },
+  drawerDivider: {
+    height: 1,
+    backgroundColor: Colors.border_grey,
+    marginVertical: moderateVerticalScale(10),
+  },
+  drawerSectionHeader: {
+    fontSize: textScale(12),
+    fontFamily: FontFamily.Montserrat_Bold,
+    color: Colors.text_grey,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: moderateVerticalScale(8),
+    paddingLeft: moderateScale(5),
+  },
+  drawerMenuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: moderateVerticalScale(8),
+    paddingHorizontal: moderateScale(10),
+    marginVertical: moderateVerticalScale(4),
+    borderRadius: moderateScale(5),
+    backgroundColor: Colors.yellow_background,
+  },
+  drawerMenuItemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: moderateScale(10),
+  },
+  drawerMenuText: {
+    fontSize: textScale(14),
+    fontFamily: FontFamily.Montserrat_SemiBold,
+    color: Colors.brandColor,
   },
 });

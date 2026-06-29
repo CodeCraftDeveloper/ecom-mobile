@@ -477,7 +477,7 @@ export default function ChekoutScreen({ route }) {
                         {item?.category === "6557deab301ec4f2f4266131"
                           ? "Corrugated Box"
                           : ""}
-                        {"\n"} {item?.product?.name} {item?.product?.slug}{" "}
+                        {"\n"} {item?.product?.name}{" "}
                         {"\n"}
                         {item?.quantity} x {item?.price}
                       </Text>
@@ -581,7 +581,6 @@ const styles = StyleSheet.create({
   },
   formInput: {
     borderWidth: 1,
-    borderColor: Colors.border_color,
     borderColor: Colors.border_color,
     color: Colors.forgetPassword,
     marginVertical: moderateVerticalScale(10),

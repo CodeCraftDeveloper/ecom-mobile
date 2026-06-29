@@ -15,7 +15,6 @@ const Colors = {
 
     iconColor: '#0d1882',
     backGround: '#FAFAFA',
-    red: 'red',
 
     green:'#228B22',
     orange:'#FFC300',

@@ -56,7 +56,7 @@ const PersonalDetails = ({ route }) => {
 
   useEffect(() => {
     fetchSpecificUser(user?._id);
-  }, [isFocused]);
+  }, [isFocused, user?._id]);
 
   const fetchSpecificUser = async id => {
     const response = await ApiService.GET_SPECIFIC_USER_DETAILS(id);

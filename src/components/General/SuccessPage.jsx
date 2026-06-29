@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Colors from "../../utils/Colors";
 import { useNavigation } from "@react-navigation/native";
 import ApiService from "../../service/APIService";
@@ -17,10 +17,58 @@ import {
 } from "../../utils/responsiveSize";
 import FontFamily from "../../utils/FontFamily";
 
+// The sequential "PI-<n>" number is only minted by the backend once payment is
+// confirmed (asynchronously, just after this screen opens), so the id captured at
+// checkout time may still be the temporary "TMP-..." value. Poll the order until
+// the real PI- number is available.
+const isFinalOrderId = (value) =>
+  typeof value === "string" && /^PI-\d+$/.test(value);
+
 const SuccessPage = ({ route }) => {
-  const { id } = route.params;
-console.log(id,"Line 22")
+  const { id, orderObjectId, orderId: initialOrderId } = route.params || {};
   const navigation = useNavigation();
+
+  const [orderNumber, setOrderNumber] = useState(
+    isFinalOrderId(initialOrderId) ? initialOrderId : null,
+  );
+  const [resolving, setResolving] = useState(
+    !isFinalOrderId(initialOrderId) && Boolean(orderObjectId),
+  );
+
+  useEffect(() => {
+    if (isFinalOrderId(initialOrderId) || !orderObjectId) return undefined;
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 6;
+
+    const poll = async () => {
+      attempts += 1;
+      try {
+        const res = await ApiService.GET_ORDER_BY_ID(orderObjectId);
+        const fetched = res?.data?.orderId;
+        if (cancelled) return;
+        if (isFinalOrderId(fetched)) {
+          setOrderNumber(fetched);
+          setResolving(false);
+          return;
+        }
+      } catch (e) {
+        // ignore and retry; a transient failure should not block the screen
+      }
+      if (cancelled) return;
+      if (attempts >= maxAttempts) {
+        setResolving(false);
+        return;
+      }
+      setTimeout(poll, 1500);
+    };
+
+    poll();
+    return () => {
+      cancelled = true;
+    };
+  }, [orderObjectId, initialOrderId]);
 
   const handleButtonPressed = async () => {
     let data = {
@@ -52,6 +100,14 @@ console.log(id,"Line 22")
         <Text style={[styles.confirmSubtitle, { alignSelf: "center" }]}>
           successfully.{" "}
         </Text>
+
+        {orderNumber ? (
+          <Text style={styles.orderNumber}>Order ID: {orderNumber}</Text>
+        ) : resolving ? (
+          <Text style={styles.orderNumberPending}>
+            Generating your order number…
+          </Text>
+        ) : null}
       </View>
 
       <TouchableOpacity
@@ -94,6 +150,18 @@ const styles = StyleSheet.create({
   confirmSubtitle: {
     color: Colors.text_grey,
     fontSize: textScale(14),
+  },
+  orderNumber: {
+    marginTop: moderateVerticalScale(12),
+    fontSize: textScale(14),
+    fontFamily: FontFamily.Montserrat_SemiBold,
+    color: Colors.black,
+  },
+  orderNumberPending: {
+    marginTop: moderateVerticalScale(12),
+    fontSize: textScale(13),
+    color: Colors.text_grey,
+    fontStyle: "italic",
   },
   addressButton: {
     backgroundColor: Colors.forgetPassword,

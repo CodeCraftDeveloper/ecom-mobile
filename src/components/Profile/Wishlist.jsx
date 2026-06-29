@@ -64,6 +64,7 @@ const Wishlist = () => {
 
   useEffect(() => {
     fetchLoginData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFocused]);
 
   const fetchLoginData = async () => {

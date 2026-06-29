@@ -1,5 +1,5 @@
 import { SafeAreaView, StatusBar, StyleSheet, Text, View } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import Colors from '../../utils/Colors';
 import Header from '../General/Header';
 import PopularProducts from './popularProducts';
@@ -30,11 +30,7 @@ const CategoryDetailsTwo = ({ route }) => {
     brands: [],
   });
 
-  useEffect(() => {
-    applyAllFilters();
-  }, [activeFilters]);
-
-  const applyAllFilters = () => {
+  const applyAllFilters = useCallback(() => {
     let result = [...originalData];
 
     // Apply size filter first
@@ -62,7 +58,11 @@ const CategoryDetailsTwo = ({ route }) => {
     }
 
     setFilteredData(result);
-  };
+  }, [originalData, activeFilters]);
+
+  useEffect(() => {
+    applyAllFilters();
+  }, [applyAllFilters]);
 
   const filterBySize = (dataToFilter, { length, width, height }) => {
     const parseSize = sizeString => {
@@ -217,7 +217,7 @@ const CategoryDetailsTwo = ({ route }) => {
     return dropdownText.toLowerCase().includes(searchText.toLowerCase());
   });
 
-  const searchProducts = async query => {
+  const searchProducts = useCallback(async query => {
     const data = { search: query };
     try {
       const response = await ApiService.HOME_PRODUCTS_SEARCH(data);
@@ -226,20 +226,24 @@ const CategoryDetailsTwo = ({ route }) => {
     } catch (error) {
       console.error(error);
     }
-  };
+  }, []);
+
+  const handleSearch = useMemo(
+    () =>
+      debounce(text => {
+        if (text.length > 0) {
+          searchProducts(text);
+        } else {
+          setSearchResults([]);
+        }
+      }, 500),
+    [searchProducts],
+  );
 
   useEffect(() => {
     handleSearch(searchText);
     return () => handleSearch.cancel();
-  }, [searchText]);
-
-  const handleSearch = debounce(text => {
-    if (text.length > 0) {
-      searchProducts(text);
-    } else {
-      setSearchResults([]);
-    }
-  }, 500);
+  }, [searchText, handleSearch]);
 
   const handleSelectProduct = product => {
     navigation.navigate('ProductDetails', { item: product });

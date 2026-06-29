@@ -7,9 +7,7 @@ import {
   TouchableOpacity,
   View,
   KeyboardAvoidingView,
-  TouchableWithoutFeedback,
   Platform,
-  Keyboard,
 } from 'react-native';
 import React, { useState } from 'react';
 import Colors from '../../utils/Colors';
@@ -33,24 +31,37 @@ import CommonButton from '../CommonButton';
 
 const AddAddress = ({ route }) => {
   const navigation = useNavigation();
-  const { addressData, isUpdating, id, index } = route.params;
+  const {
+    addressData = {},
+    existingAddresses = [],
+    isUpdating = false,
+    id,
+    index,
+  } = route.params || {};
   console.log(addressData, 'line 30');
   console.log(id, 'Line 32');
   console.log(index, 'Line 33');
   const [loading, setLoading] = useState(false);
-  const [name, setName] = useState(isUpdating ? addressData.name : '');
-  const [address, setAddress] = useState(isUpdating ? addressData.address : '');
-  const [city, setCity] = useState(isUpdating ? addressData.town : '');
-  const [phone, setPhone] = useState(isUpdating ? addressData.mobile : '');
-  const [gst, setGST] = useState(isUpdating ? addressData.gstin : '');
-  const [pincode, setPinCode] = useState(isUpdating ? addressData.pincode : '');
-  const [landmark, setLandmark] = useState(
-    isUpdating ? addressData.landmark : '',
+  const [name, setName] = useState(isUpdating ? addressData?.name || '' : '');
+  const [address, setAddress] = useState(
+    isUpdating ? addressData?.address || '' : '',
   );
-  const [state, setState] = useState(isUpdating ? addressData.state : '');
-  const [email, setEmail] = useState(isUpdating ? addressData.email : '');
+  const [city, setCity] = useState(isUpdating ? addressData?.town || '' : '');
+  const [phone, setPhone] = useState(
+    isUpdating ? addressData?.mobile || '' : '',
+  );
+  const [gst, setGST] = useState(isUpdating ? addressData?.gstin || '' : '');
+  const [pincode, setPinCode] = useState(
+    isUpdating ? addressData?.pincode || '' : '',
+  );
+  const [landmark, setLandmark] = useState(
+    isUpdating ? addressData?.landmark || '' : '',
+  );
   const [selectedState, setSelectedState] = useState(
-    isUpdating ? addressData.state : '',
+    isUpdating ? addressData?.state || '' : '',
+  );
+  const [email, setEmail] = useState(
+    isUpdating ? addressData?.email || '' : '',
   );
   const [stateList, setStateList] = useState(StateData);
   const [showStateDropdown, setShowStateDropdown] = useState(false);
@@ -58,12 +69,24 @@ const AddAddress = ({ route }) => {
   const validateGSTRegex =
     /^[0-9]{2}[a-zA-Z]{5}[0-9]{4}[a-zA-Z]{1}[0-9]{1}[a-zA-Z]{1}[0-9a-zA-Z]{1}$/;
 
-  const validateEmail = email => {
+  const buildAddressPayload = () => ({
+    name: name,
+    mobile: phone,
+    gstin: gst,
+    address: address,
+    pincode: pincode,
+    landmark: landmark,
+    town: city,
+    state: selectedState,
+    email: email,
+  });
+
+  const validateEmail = emailValue => {
     const regex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,}$/;
-    if (!regex.test(email)) {
+    if (!regex.test(emailValue)) {
       return false;
     }
-    const domainPart = email.split('@')[1];
+    const domainPart = emailValue.split('@')[1];
     if (domainPart.includes('..')) {
       return false;
     }
@@ -121,21 +144,11 @@ const AddAddress = ({ route }) => {
       setLoading(true);
       console.log('Clicked on the Update Address Button');
       try {
+        const nextAddresses = [...existingAddresses];
+        nextAddresses[index] = buildAddressPayload();
         const data = {
           id: id,
-          // addressIndex: index,
-          contact_address: [
-            {
-              name: name,
-              mobile: phone,
-              gstin: gst,
-              address: address,
-              pincode: pincode,
-              landmark: landmark,
-              town: city,
-              email: email,
-            },
-          ],
+          contact_address: nextAddresses,
         };
         console.log(data, 'line 86');
         const response = await ApiService.EDIT_ADDRESS(data);
@@ -183,23 +196,13 @@ const AddAddress = ({ route }) => {
       showErrorMessage('Error! Please enter the valid GST Number!');
       return;
     } else {
-      setLoading(true)
+      setLoading(true);
       try {
         const data = {
           id: id,
-          contact_address: [{
-            name: name,
-            mobile: phone,
-            gstin: gst,
-            address: address,
-            pincode: pincode,
-            landmark: landmark,
-            town: city,
-            state: selectedState,
-            email: email,
-          }],
+          contact_address: [...existingAddresses, buildAddressPayload()],
         };
-        console.log(data,"data")
+        console.log(data, 'data');
         const response = await ApiService.ADD_ADDRESS(data);
         // console.log(response,"Line 172")
         if (response?.success === true) {
@@ -211,9 +214,9 @@ const AddAddress = ({ route }) => {
         }
         console.log(data, 'line 171');
       } catch (e) {
-        showErrorMessage("Network Error" ||"Something went wrong");
-      }finally{
-        setLoading(false)
+        showErrorMessage('Network Error');
+      } finally {
+        setLoading(false);
       }
     }
   };
@@ -393,9 +396,9 @@ const AddAddress = ({ route }) => {
                       />
                       {/* Use the filtered state list here */}
                       {stateList.length > 0 ? (
-                        stateList.map((state, index) => (
+                        stateList.map((state, stateIndex) => (
                           <TouchableOpacity
-                            key={index}
+                            key={stateIndex}
                             style={styles.dropdownItem}
                             onPress={() => handleStateSelection(state)}
                           >
@@ -415,7 +418,9 @@ const AddAddress = ({ route }) => {
                 textStyle={styles.addressText}
                 isLoading={loading}
                 disabled={loading}
-                handleAction={ ()=>isUpdating ? handleUpDateAddress() : handleAddress2()}
+                handleAction={() =>
+                  isUpdating ? handleUpDateAddress() : handleAddress2()
+                }
               />
             </ScrollView>
           </View>

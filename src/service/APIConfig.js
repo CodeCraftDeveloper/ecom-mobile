@@ -1,9 +1,10 @@
-export const BASE_URL = 'https://server.prempackaging.com/premind/api/';
+export const BASE_URL = 'http://10.0.2.2:5000/premind/api/';
 
 export const API_ENDPOINTS = {
   AUTH: {
     SIGNUP_USER: 'signup',
     LOGIN_USER: 'signin',
+    GOOGLE_LOGIN: 'auth/google',
     VERIFY_SIGN_UP_USER_EMAIL: 'verify/email',
   },
 
@@ -16,17 +17,13 @@ export const API_ENDPOINTS = {
   PRODUCTS: {
     GET_ALL_PRODUCTS: 'product/all',
     GET_SINGLE_PRODUCT: 'product/get/id/',
-    GET_SINGLE_PRODUCT_DETAILS: 'product/single/',
-    GET_PRODUCT_BY_SLUG: 'product/get/:',
-    GET_RELATED_PRODUCT_DETAILS_BY_ID: 'product/get/id/',
     SEARCH_PRODUCT: 'product/search',
     HOME_PRODUCTS_SEARCH: 'product/main/search',
-    NOTIFY_PRODUCT:'notify/create'
+    NOTIFY_PRODUCT: 'notify/create',
   },
 
   CATEGORIES: {
     GET_ALL_CATEGORIES: 'category/all',
-    GET_CATEGORIES_IMAGES: 'get/category/images',
   },
 
   CART: {
@@ -47,13 +44,16 @@ export const API_ENDPOINTS = {
   ORDERS: {
     PLACE_ORDER: 'order/create',
     GET_ALL_ORDERS: 'my/orders/',
-    UPDATE_PAYMENT_STATUS:'order/update/payment/status'
+    GET_ORDER_BY_ID: 'order/get/',
+    UPDATE_PAYMENT_STATUS: 'order/update/payment/status',
   },
 
   USER: {
     UPDATE_PROFILE: 'edituser',
     GET_SPECIFIC_USER_DETAILS: 'getuser/',
-    DELETE_USER:'deleteUser'
+    DELETE_USER: 'deleteUser',
+    GET_PRIVACY_PREFERENCES: 'user/privacy-preferences',
+    UPDATE_PRIVACY_PREFERENCES: 'user/privacy-preferences',
   },
 
   COUPONS: {
@@ -69,5 +69,18 @@ export const API_ENDPOINTS = {
 
   CUSTOM: {
     CUSTOM_PACKAGING: 'custom-packaging',
+  },
+
+  CONTACT: {
+    CREATE_CONTACT: 'contact-form/create',
+  },
+
+  NOTIFICATIONS: {
+    GET_FEED: 'notification/feed',
+    UNREAD_COUNT: 'notification/feed/unread-count',
+    MARK_READ: 'notification/feed/', // append `${id}/read`
+    MARK_ALL_READ: 'notification/feed/read-all',
+    REGISTER_DEVICE: 'notification/device/register',
+    UNREGISTER_DEVICE: 'notification/device/unregister',
   },
 };

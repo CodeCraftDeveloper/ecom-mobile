@@ -54,7 +54,7 @@ const OrderDetails = ({ route }) => {
     ).toFixed(2);
     setDiscount(!isNaN(calculatedDiscount) ? calculatedDiscount : 0);
     setTotalAmount(total);
-  }, [item?.items]);
+  }, [item?.items, item?.totalCartValue, item?.totalOrderValue]);
 
   const handleMakePayment = async (product) => {
     setLoading(true);
@@ -150,6 +150,7 @@ const OrderDetails = ({ route }) => {
       // STEP 4: NAVIGATE TO SUCCESS
       navigation.navigate('SuccessPage', {
         id: product?._id,
+        orderObjectId: product?._id,
         orderId: product?.orderId,
         paymentId: paymentResult?.razorpay_payment_id,
       });
@@ -252,12 +253,9 @@ const OrderDetails = ({ route }) => {
             {item?.items.map((orderItem, index) => {
               console.log(orderItem, 'line 278');
               return (
-                <View style={{}}>
-                  <Text style={styles.productName} key={index}>
-                    {orderItem?.product?.product_id
-                      ? orderItem?.product?.product_id
-                      : ''}{' '}
-                    {orderItem?.product?.slug}
+                <View key={index} style={{}}>
+                  <Text style={styles.productName}>
+                    {orderItem?.product?.name ? orderItem?.product?.name : 'N/A'}
                   </Text>
                   <View style={styles.subDetailsHolder}>
                     <Entypo

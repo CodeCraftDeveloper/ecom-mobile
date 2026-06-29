@@ -2,6 +2,7 @@ import { StyleSheet } from 'react-native';
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+import { navigationRef } from './navigationRef';
 import CustomForm from '../screen/appScreens/CustomForm';
 import Login from '../screen/authScreen/Login';
 import ForgetPassword from '../screen/authScreen/forgetPassword/ForgetPassword';
@@ -25,20 +26,34 @@ import ChekoutScreen from "../screen/appScreens/ChekoutScreen";
 import SelectAddress from "../components/selectAddress";
 import OrderDetails from "../components/Profile/OrderDetails"
 import PaymentFailedScreen from "../components/General/PaymentFailedScreen";
-
-
+import AboutUs from '../screen/appScreens/AboutUs';
+import PrivacyPolicy from '../screen/appScreens/PrivacyPolicy';
+import TermsAndConditions from '../screen/appScreens/TermsAndConditions';
+import Report from '../screen/appScreens/Report';
+import Settings from '../screen/appScreens/Settings';
+import AccountPrivacy from '../screen/appScreens/AccountPrivacy';
+import ContactUs from '../screen/appScreens/ContactUs';
+import Notifications from '../screen/appScreens/Notifications';
 
 const Stack = createStackNavigator();
 
 const StackNavigation = () => {
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
         }}
       >
         <Stack.Screen name="Drawer" component={DrawerNavigation} />
+        <Stack.Screen name="Settings" component={Settings} />
+        <Stack.Screen name="Notifications" component={Notifications} />
+        <Stack.Screen name="AccountPrivacy" component={AccountPrivacy} />
+        <Stack.Screen name="Contact Us" component={ContactUs} />
+        <Stack.Screen name="About Us" component={AboutUs} />
+        <Stack.Screen name="Privacy Policy" component={PrivacyPolicy} />
+        <Stack.Screen name="Terms And Conditions" component={TermsAndConditions} />
+        <Stack.Screen name="Report" component={Report} />
         <Stack.Screen name="Login" component={Login} />
         <Stack.Screen name="forgetPassword" component={ForgetPassword} />
         <Stack.Screen name="Otp" component={OTP} />

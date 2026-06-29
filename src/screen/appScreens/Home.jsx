@@ -6,7 +6,7 @@ import {
   View,
   Linking,
 } from 'react-native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import DeviceInfo from 'react-native-device-info';
 import VersionCheck from 'react-native-version-check';
 import Colors from '../../utils/Colors';
@@ -38,10 +38,13 @@ import HomePopularProduct from '../../components/Home/HomePopularProduct';
 import WrapperContainer from '../../utils/WrapperContainer';
 import StorageService from '../../utils/storageService';
 import { parseStoredUser } from '../../utils/HelperFunction';
+import {
+  getProductBrandId,
+  getProductCategoryId,
+} from '../../utils/productFields';
 
 const Home = () => {
   const navigation = useNavigation();
-  const [loading, setLoading] = useState(false);
   const [allProducts, setAllProducts] = useState([]);
   const [selectedBrand, setSelectedBrand] = useState(null);
   const [filteredProducts, setFilteredProducts] = useState([]);
@@ -50,7 +53,6 @@ const Home = () => {
   const [navigating, setNavigating] = useState(false);
   const [cartValueChanged, setCartValueChanged] = useState(0);
   const [wishListValueChanged, setWishListValueChanged] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
   const placeholderImage = 'https://prempackaging.com/img/logo.png';
   const [searchText, setSearchText] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -78,7 +80,7 @@ const Home = () => {
     }
   };
 
-  const searchProducts = async query => {
+  const searchProducts = useCallback(async query => {
     const data = { search: query };
     try {
       const response = await ApiService.HOME_PRODUCTS_SEARCH(data);
@@ -87,20 +89,24 @@ const Home = () => {
     } catch (error) {
       console.error(error);
     }
-  };
+  }, []);
 
-  const handleSearch = debounce(text => {
-    if (text.length > 0) {
-      searchProducts(text);
-    } else {
-      setSearchResults([]);
-    }
-  }, 500);
+  const handleSearch = useMemo(
+    () =>
+      debounce(text => {
+        if (text.length > 0) {
+          searchProducts(text);
+        } else {
+          setSearchResults([]);
+        }
+      }, 500),
+    [searchProducts],
+  );
 
   useEffect(() => {
     handleSearch(searchText);
     return () => handleSearch.cancel();
-  }, [searchText]);
+  }, [searchText, handleSearch]);
 
   const handleSelectProduct = product => {
     navigation.navigate('ProductDetails', { item: product });
@@ -159,7 +165,6 @@ const Home = () => {
 
   const getAllProducts = async () => {
     try {
-      setLoading(true);
       const response = await ApiService.GET_ALL_PRODUCTS();
       if (response && response?.data) {
         const filteredPopularProducts = response.data.filter(
@@ -172,10 +177,8 @@ const Home = () => {
         setAllProducts(response?.data);
         setFilteredProducts(filteredPopularProducts);
       }
-      setLoading(false);
     } catch (e) {
       console.log('Error fetching Products', e?.message);
-      setLoading(false);
     }
   };
 
@@ -192,11 +195,11 @@ const Home = () => {
             '6642e8f665f20fe41ab417bc',
           ];
           filteredData = allProducts.filter(item =>
-            tapeCategories.includes(item.category?._id),
+            tapeCategories.includes(getProductCategoryId(item)),
           );
         } else {
           filteredData = allProducts.filter(
-            item => item.category?._id === list?.category_id,
+            item => getProductCategoryId(item) === list?.category_id,
           );
         }
 
@@ -219,7 +222,9 @@ const Home = () => {
       setTimeout(async () => {
         navigation.navigate('CategoryDetailsTwo', {
           categories: brand,
-          data: allProducts.filter(item => item.brand._id === brand.brandId),
+          data: allProducts.filter(
+            item => getProductBrandId(item) === brand.brandId,
+          ),
           option: 'brand',
         });
         setNavigating(false);
@@ -231,7 +236,7 @@ const Home = () => {
   };
 
   return (
-    <WrapperContainer isLoading={loading} backgroundColor={Colors.white}>
+    <WrapperContainer backgroundColor={Colors.white}>
       <View style={styles.main}>
         <BottomNavigationHeader
           cartValueChanged={cartValueChanged}
@@ -264,7 +269,11 @@ const Home = () => {
           </TouchableOpacity>
         )}
 
-        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: moderateVerticalScale(80) }}
+          showsVerticalScrollIndicator={false}
+        >
           <>
             {/* Brand */}
             <View
@@ -285,6 +294,7 @@ const Home = () => {
                   showsHorizontalScrollIndicator={false}
                   horizontal={true}
                   style={styles.brandHolder}
+                  contentContainerStyle={styles.brandContentContainer}
                 >
                   {brandData.map(brand => (
                     <TouchableOpacity
@@ -326,7 +336,7 @@ const Home = () => {
             <View style={styles.popularProductHolder}>
               <View style={styles.brandView}>
                 <Text style={styles.brandText}>SHOP FROM TOP PRODUCTS</Text>
-                <View style={styles.productHolder}>
+                <View style={styles.horizontalListWrapper}>
                   <HomePopularProduct
                     data={filteredProducts}
                     cartValueChanged={cartValueChanged}
@@ -342,7 +352,7 @@ const Home = () => {
                 <Text style={styles.brandText}>
                   BEST DEALS ON FEATURED PRODUCTS
                 </Text>
-                <View style={styles.productHolder}>
+                <View style={styles.horizontalListWrapper}>
                   <HomePopularProduct
                     data={dealProduct}
                     cartValueChanged={cartValueChanged}
@@ -384,6 +394,13 @@ const styles = StyleSheet.create({
   brandHolder: {
     marginVertical: moderateVerticalScale(5),
   },
+  brandContentContainer: {
+    paddingHorizontal: moderateScale(10),
+    paddingVertical: moderateVerticalScale(8),
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexGrow: 1,
+  },
   brandView: {
     width: '100%',
     alignSelf: 'center',
@@ -398,20 +415,22 @@ const styles = StyleSheet.create({
   },
   imageHolder: {
     borderWidth: moderateScale(1),
-    marginHorizontal: moderateScale(10),
-    borderRadius: moderateScale(10),
+    marginHorizontal: moderateScale(6),
+    borderRadius: moderateScale(8),
     borderColor: Colors.red,
     backgroundColor: Colors.white,
     overflow: 'hidden',
-    width: moderateScale(120),
-    height: moderateScale(70),
-    paddingHorizontal: moderateScale(10),
+    width: moderateScale(100),
+    height: moderateScale(55),
+    padding: moderateScale(6),
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   imageStyle: {
-    width: '100%',
-    height: '100%',
+    width: '80%',
+    height: '80%',
     backgroundColor: Colors.white,
-    overflow: 'visible',
+    alignSelf: 'center',
   },
   imageHolder2: {
     width: moderateScale(120),
@@ -453,6 +472,9 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     // marginTop: moderateVerticalScale(10),
     justifyContent: 'center',
+  },
+  horizontalListWrapper: {
+    width: '100%',
   },
   item: {
     padding: moderateScale(10),

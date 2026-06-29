@@ -9,6 +9,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   ScrollView,
+  Platform,
 } from 'react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import Colors from '../../utils/Colors';

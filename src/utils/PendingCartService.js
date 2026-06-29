@@ -1,11 +1,15 @@
 let pendingCartItem = null;
 
 const PendingCartService = {
-  set: (product, count) => {
+  set(product, count = 1) {
     pendingCartItem = { product, count };
   },
-  get: () => pendingCartItem,
-  clear: () => {
+
+  get() {
+    return pendingCartItem;
+  },
+
+  clear() {
     pendingCartItem = null;
   },
 };

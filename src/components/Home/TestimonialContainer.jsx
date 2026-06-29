@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Dimensions, ScrollView, StyleSheet, Text, View } from "react-native";
 import Data from "../../assets/data/testimonials.json";
 import FontFamily from "../../utils/FontFamily";
@@ -17,7 +17,7 @@ const TestimonialContainer = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [data, setData] = useState([...Data]);
 
-  const scrollToNext = () => {
+  const scrollToNext = useCallback(() => {
     setCurrentIndex((prevIndex) => {
       const nextIndex = (prevIndex + 1) % data.length;
       if (scrollViewRef.current) {
@@ -42,7 +42,7 @@ const TestimonialContainer = () => {
 
       return nextIndex;
     });
-  };
+  }, [data]);
 
   const handleScroll = (event) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x;
@@ -64,7 +64,7 @@ const TestimonialContainer = () => {
   useEffect(() => {
     const intervalId = setInterval(scrollToNext, 2000);
     return () => clearInterval(intervalId);
-  }, [currentIndex, data]);
+  }, [scrollToNext]);
 
   return (
     <View
@@ -83,11 +83,13 @@ const TestimonialContainer = () => {
       >
         {data.map((item, index) => (
           <View
-            style={[styles.itemHolder, { width: screenWidth * 0.95 }]}
+            style={[styles.pageWrapper, { width: screenWidth }]}
             key={index}
           >
-            <Text style={styles.nameText}>{item?.name}</Text>
-            <Text style={styles.descriptionText}>{item?.feedback}</Text>
+            <View style={styles.itemHolder}>
+              <Text style={styles.nameText}>{item?.name}</Text>
+              <Text style={styles.descriptionText}>{item?.feedback}</Text>
+            </View>
           </View>
         ))}
       </ScrollView>
@@ -107,19 +109,21 @@ const styles = StyleSheet.create({
     fontSize: textScale(16),
     textTransform: "uppercase",
     textAlign: "center",
-    // fontWeight: "700",
     fontFamily:FontFamily.Montserrat_SemiBold,
     padding: moderateScale(10),
     marginBottom: moderateVerticalScale(15),
   },
+  pageWrapper: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
   itemHolder: {
     borderWidth: moderateScale(2),
     gap: moderateScale(10),
-    padding: moderateScale(10),
+    padding: moderateScale(15),
     alignItems: "center",
-    margin: moderateScale(10),
     backgroundColor: "white",
-    borderRadius: moderateScale(5),
+    borderRadius: moderateScale(10),
     elevation: moderateScale(10),
     borderColor: "white",
     shadowRadius: moderateScale(3),
@@ -129,6 +133,8 @@ const styles = StyleSheet.create({
       width: 0,
       height: moderateScale(2),
     },
+    width: screenWidth - moderateScale(30),
+    marginVertical: moderateVerticalScale(10),
   },
   nameText: {
     fontFamily: FontFamily?.Montserrat_SemiBold,

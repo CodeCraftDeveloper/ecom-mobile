@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Colors from '../../utils/Colors';
 import AntDesign from 'react-native-vector-icons/AntDesign';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -16,6 +16,7 @@ import {
   moderateScale,
   moderateVerticalScale,
   textScale,
+  width,
 } from '../../utils/responsiveSize';
 import FontFamily from '../../utils/FontFamily';
 import FastImage from 'react-native-fast-image';
@@ -27,6 +28,7 @@ import {
   showErrorMessage,
   showSuccessMessage,
 } from '../../utils/HelperFunction';
+import GuestCartService from '../../utils/GuestCartService';
 
 const HomePopularProduct = ({
   data,
@@ -41,18 +43,18 @@ const HomePopularProduct = ({
   const [showLoginPopup, setShowLoginPopup] = useState(false);
   const [localWishlistUpdates, setLocalWishlistUpdates] = useState({});
   const [totalPrice, setTotalPrice] = useState(0);
+  const isBuyItWith = comingFrom === 'buyItWith';
+  const visibleProducts = useMemo(
+    () => (isBuyItWith ? data.slice(0, 3) : data),
+    [data, isBuyItWith],
+  );
 
   useEffect(() => {
-    // Calculate total price whenever 'data' changes
-    calculateTotalPrice();
-  }, [data]);
-
-  const calculateTotalPrice = () => {
-    const total = data.reduce((sum, item) => {
+    const total = visibleProducts.reduce((sum, item) => {
       return sum + (item?.priceList?.[0]?.SP || 0);
     }, 0);
     setTotalPrice(total);
-  };
+  }, [visibleProducts]);
 
   useEffect(() => {
     (async () => {
@@ -61,8 +63,8 @@ const HomePopularProduct = ({
     })();
   }, []);
 
-  const handleAddToCartBuyItWith = data => {
-    data.forEach(item => {
+  const handleAddToCartBuyItWith = bundleProducts => {
+    bundleProducts.forEach(item => {
       if (item?.priceList?.[0]?.stock_quantity > 0) {
         handleAddToCart(item);
       }
@@ -76,9 +78,7 @@ const HomePopularProduct = ({
       const userData = parseStoredUser(user);
       const cartData = {
         product: {
-          brand: product?.brand?._id,
           product: product?._id,
-          category: product?.category?._id,
           packSize: product?.priceList[0].number,
           price: product?.priceList[0].SP,
           quantity: 1,
@@ -99,7 +99,19 @@ const HomePopularProduct = ({
         console.log('Error adding to cart:', e);
       }
     } else {
-      setShowLoginPopup(true);
+      // Guest user: persist locally; merged into the server cart on login.
+      try {
+        await GuestCartService.addItem({
+          product,
+          packSize: product?.priceList?.[0]?.number,
+          price: product?.priceList?.[0]?.SP,
+          quantity: 1,
+        });
+        showSuccessMessage('Product Added to cart successfully');
+        DeviceEventEmitter.emit('cartUpdated');
+      } catch (e) {
+        console.log('Error adding to guest cart:', e);
+      }
     }
   };
 
@@ -178,9 +190,7 @@ const HomePopularProduct = ({
         // Add to wishlist
         const wishlistData = {
           product: {
-            brand: product?.brand?._id,
             product: product?._id,
-            category: product?.category?._id,
             packSize: product?.priceList[0].number,
             price: product?.priceList[0].SP,
             quantity: 1,
@@ -218,18 +228,27 @@ const HomePopularProduct = ({
   return (
     <View style={{ flex: 1 }}>
       <ScrollView
-        style={styles.productHolder}
-        horizontal={true}
+        style={styles.scrollViewStyle}
+        contentContainerStyle={[
+          styles.productContentContainer,
+          isBuyItWith && styles.buyItWithContentContainer,
+        ]}
+        horizontal={!isBuyItWith}
         showsHorizontalScrollIndicator={false}
       >
-        {data.map((item, index) => (
+        {visibleProducts.map((item, index) => (
           <React.Fragment key={index}>
             <TouchableOpacity
               key={index}
-              style={styles.item}
+              style={[styles.item, isBuyItWith && styles.buyItWithItem]}
               onPress={() => navigation.push('ProductDetails', { item })}
             >
-              <View style={styles.imageHolder3}>
+              <View
+                style={[
+                  styles.imageHolder3,
+                  isBuyItWith && styles.buyItWithImageHolder,
+                ]}
+              >
                 <FastImage
                   style={styles.image}
                   source={{
@@ -237,21 +256,32 @@ const HomePopularProduct = ({
                     priority: FastImage.priority.high,
                     cache: FastImage.cacheControl.web,
                   }}
-                  resizeMode={FastImage.resizeMode.cover}
+                  resizeMode={FastImage.resizeMode.contain}
                 />
               </View>
-              <View style={styles.itemTextHolder}>
+              <View
+                style={[
+                  styles.itemTextHolder,
+                  isBuyItWith && styles.buyItWithTextHolder,
+                ]}
+              >
                 <Text
                   numberOfLines={2}
-                  style={[styles.nameText, { textTransform: 'capitalize' }]}
+                  style={[
+                    styles.nameText,
+                    isBuyItWith && styles.buyItWithNameText,
+                    { textTransform: 'capitalize' },
+                  ]}
                 >
-                  {item?.name} {item?.slug}
+                  {item?.name}
                 </Text>
                 <View
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
+                    justifyContent: 'center',
                     gap: moderateScale(5),
+                    width: '100%',
                   }}
                 >
                   <Text style={styles.mrpText}>
@@ -260,9 +290,9 @@ const HomePopularProduct = ({
                   <Text
                     style={[
                       styles.priceText,
-                      {
-                        fontSize: textScale(18),
-                      },
+                      isBuyItWith
+                        ? styles.buyItWithPriceText
+                        : styles.productPriceText,
                     ]}
                   >
                     ₹{Math.round(item?.priceList[0]?.SP || '0')}
@@ -276,6 +306,7 @@ const HomePopularProduct = ({
                       ((item?.priceList[0]?.MRP - item?.priceList[0]?.SP) /
                         item?.priceList[0]?.MRP) *
                         100,
+                      10,
                     )}
                     %{'\n'}
                     OFF
@@ -283,20 +314,23 @@ const HomePopularProduct = ({
                 </View>
               </View>
               <TouchableOpacity
-                style={styles.heartIconHolder}
+                style={[
+                  styles.heartIconHolder,
+                  isBuyItWith && styles.buyItWithHeartIconHolder,
+                ]}
                 onPress={() => {
                   handleSaveToWishList(item);
                 }}
               >
                 <AntDesign
                   name={isItemInWishlist(item?._id) ? 'heart' : 'heart'}
-                  size={moderateScale(25)}
+                  size={isBuyItWith ? moderateScale(18) : moderateScale(25)}
                   color={
                     isItemInWishlist(item?._id) ? Colors.red : Colors.text_grey
                   }
                 />
               </TouchableOpacity>
-              {comingFrom === 'buyItWith' ? null : (
+              {isBuyItWith ? null : (
                 <TouchableOpacity
                   // onPress={() => handleAddToCart(item)}
                   onPress={() => navigation.push('ProductDetails', { item })}
@@ -308,11 +342,11 @@ const HomePopularProduct = ({
               )}
             </TouchableOpacity>
             {/* Display "+" icon if comingFrom is 'buyItWith' and it's not the last product */}
-            {comingFrom === 'buyItWith' && index < data.length - 1 && (
+            {isBuyItWith && index < visibleProducts.length - 1 && (
               <View style={styles.plusIconHolder}>
                 <Entypo
                   name="plus"
-                  size={textScale(30)}
+                  size={textScale(22)}
                   color={Colors.brandColor}
                 />
               </View>
@@ -320,7 +354,7 @@ const HomePopularProduct = ({
           </React.Fragment>
         ))}
       </ScrollView>
-      {comingFrom === 'buyItWith' && (
+      {isBuyItWith && (
         <View
           style={{
             alignItems: 'center',
@@ -339,25 +373,25 @@ const HomePopularProduct = ({
             style={[
               styles.buttonHolder,
               {
-                backgroundColor: data.some(
+                backgroundColor: visibleProducts.some(
                   item => item?.priceList?.[0]?.stock_quantity <= 0,
                 )
                   ? Colors.outOfStock
                   : Colors.brandColor,
-                borderColor: data.some(
+                borderColor: visibleProducts.some(
                   item => item?.priceList?.[0]?.stock_quantity <= 0,
                 )
                   ? Colors.outOfStock
                   : Colors.brandColor,
               },
             ]}
-            disabled={data.some(
+            disabled={visibleProducts.some(
               item => item?.priceList?.[0]?.stock_quantity <= 0,
             )}
-            onPress={() => handleAddToCartBuyItWith(data)}
+            onPress={() => handleAddToCartBuyItWith(visibleProducts)}
           >
             <Text style={styles.buttonText2}>
-              Add all {data.length} to cart
+              Add all {visibleProducts.length} to cart
             </Text>
           </TouchableOpacity>
         </View>
@@ -380,30 +414,62 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     // elevation: moderateScale(10),
     gap: moderateScale(5),
-    width: moderateScale(200),
-    margin: moderateScale(10),
-    // borderWidth:2,
+    width: moderateScale(160),
+    margin: moderateScale(8),
+    borderRadius: moderateScale(8),
+    borderWidth: 1,
+    borderColor: Colors.border_grey,
+  },
+  buyItWithItem: {
+    width: Math.floor((width - moderateScale(78)) / 3),
+    marginHorizontal: 0,
+    marginVertical: moderateScale(6),
+    padding: moderateScale(6),
+    gap: moderateScale(3),
+  },
+  imageHolder3: {
+    width: '100%',
+    height: moderateScale(120),
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.white,
+  },
+  buyItWithImageHolder: {
+    height: moderateScale(78),
   },
   image: {
-    width: moderateScale(175),
-    height: moderateScale(175),
+    width: '100%',
+    height: '100%',
     alignSelf: 'center',
   },
   itemTextHolder: {
-    width: '98%',
-    height: moderateScale(85),
-    gap: moderateScale(5),
+    width: '100%',
+    height: moderateScale(60),
+    gap: moderateScale(3),
+    alignItems: 'center',
+  },
+  buyItWithTextHolder: {
+    height: moderateScale(52),
   },
   priceText: {
     fontSize: textScale(16),
     color: Colors.green,
     fontFamily: FontFamily.Montserrat_SemiBold,
   },
+  productPriceText: {
+    fontSize: textScale(18),
+  },
+  buyItWithPriceText: {
+    fontSize: textScale(12),
+  },
   nameText: {
     fontSize: textScale(15),
     color: Colors.black,
-    textAlign: 'left',
+    textAlign: 'center',
     fontFamily: FontFamily.Montserrat_Medium,
+  },
+  buyItWithNameText: {
+    fontSize: textScale(11),
   },
   discountHolder: {
     position: 'absolute',
@@ -449,6 +515,9 @@ const styles = StyleSheet.create({
     // borderWidth: 1,
     overflow: 'hidden',
   },
+  buyItWithHeartIconHolder: {
+    padding: moderateScale(3),
+  },
   button: {
     marginHorizontal: moderateScale(-10),
     marginBottom: moderateScale(-10),
@@ -469,6 +538,23 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     // justifyContent: "center",
     marginVertical: moderateVerticalScale(10),
+  },
+  scrollViewStyle: {
+    marginVertical: moderateVerticalScale(10),
+    width: '100%',
+  },
+  productContentContainer: {
+    paddingHorizontal: moderateScale(8),
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexGrow: 1,
+  },
+  buyItWithContentContainer: {
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: moderateScale(4),
   },
   loaderContainer: {
     width: '90%',
@@ -500,7 +586,7 @@ const styles = StyleSheet.create({
   plusIconHolder: {
     justifyContent: 'center',
     alignItems: 'center',
-    // marginHorizontal: moderateScale(2),
+    width: moderateScale(18),
   },
   totalPriceText: {
     fontFamily: FontFamily.Montserrat_Bold,

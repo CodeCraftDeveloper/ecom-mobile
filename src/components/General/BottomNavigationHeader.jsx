@@ -12,25 +12,30 @@ import ApiService from "../../service/APIService";
 import FontFamily from "../../utils/FontFamily";
 import StorageService from "../../utils/storageService";
 import { parseStoredUser } from "../../utils/HelperFunction";
+import GuestCartService from "../../utils/GuestCartService";
 
 const BottomNavigationHeader = ({ cartValueChanged, wishlistValueChanged }) => {
   // console.log(cartValueChanged, wishlistValueChanged, "line 13");
   const navigation = useNavigation();
   const [cartCount, setCartCount] = useState(0);
   const [wishlistCount, setWishlistCount] = useState(0);
+  const [notifCount, setNotifCount] = useState(0);
   const isFocused = useIsFocused();
 
   useEffect(() => {
     fetchCartCount();
     fetchWishListCount();
+    fetchNotifCount();
   }, [isFocused, cartValueChanged, wishlistValueChanged]);
 
   useEffect(() => {
     const cartSub = DeviceEventEmitter.addListener('cartUpdated', fetchCartCount);
     const wishSub = DeviceEventEmitter.addListener('wishlistUpdated', fetchWishListCount);
+    const notifSub = DeviceEventEmitter.addListener('notificationsUpdated', fetchNotifCount);
     return () => {
       cartSub.remove();
       wishSub.remove();
+      notifSub.remove();
     };
   }, []);
 
@@ -41,6 +46,9 @@ const BottomNavigationHeader = ({ cartValueChanged, wishlistValueChanged }) => {
       if (userData?._id) {
         const response = await ApiService.GET_TOTAL_CART_COUNT(userData._id);
         setCartCount(response?.data?.count || 0);
+      } else {
+        const guestCount = await GuestCartService.getCount();
+        setCartCount(guestCount || 0);
       }
     } catch (error) {
       console.log('Error fetching cart count:', error);
@@ -57,6 +65,21 @@ const BottomNavigationHeader = ({ cartValueChanged, wishlistValueChanged }) => {
       }
     } catch (error) {
       console.log('Error fetching wishlist count:', error);
+    }
+  };
+
+  const fetchNotifCount = async () => {
+    try {
+      const storedUser = await StorageService.getItem("user_data");
+      const userData = parseStoredUser(storedUser);
+      if (userData?._id) {
+        const response = await ApiService.GET_NOTIFICATION_UNREAD_COUNT();
+        setNotifCount(response?.data?.count || 0);
+      } else {
+        setNotifCount(0);
+      }
+    } catch (error) {
+      console.log('Error fetching notification count:', error);
     }
   };
 
@@ -81,8 +104,20 @@ const BottomNavigationHeader = ({ cartValueChanged, wishlistValueChanged }) => {
           />
         </View>
 
-        {/* Favorite and Cart Icons */}
+        {/* Notifications, Favorite and Cart Icons */}
         <View style={styles.iconHolder}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate("Notifications")}
+            style={styles.cartContainer}
+          >
+            <Feather name="bell" size={moderateScale(28)} color={Colors.black} />
+            {notifCount > 0 && (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{notifCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
           <TouchableOpacity onPress={() => navigation.navigate("Favorite")}>
             <Feather
               name="heart"

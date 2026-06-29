@@ -1,7 +1,6 @@
 import axios from 'axios';
 import StorageService from '../utils/storageService';
 import { BASE_URL, API_ENDPOINTS } from '../service/APIConfig';
-import { RAZORPAY_PAYMENT_KEY } from "../components/General/secrets";
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
@@ -11,10 +10,29 @@ const apiClient = axios.create({
   },
 });
 
+const summarizeResponse = data => {
+  if (!data || typeof data !== 'object') {
+    return data;
+  }
+
+  if (Array.isArray(data)) {
+    return `[${data.length} items]`;
+  }
+
+  const summary = { ...data };
+  if (Array.isArray(summary.data)) {
+    summary.data = `[${summary.data.length} items]`;
+  } else if (summary.data && typeof summary.data === 'object') {
+    summary.data = '[OBJECT]';
+  }
+
+  return summary;
+};
+
 apiClient.interceptors.request.use(
   async config => {
     const token = await StorageService.getItem('authToken');
-    console.log('Retrieved Auth Token:', token);
+    console.log('Retrieved Auth Token:', token ? '[PRESENT]' : '[MISSING]');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -28,7 +46,7 @@ apiClient.interceptors.request.use(
         config.url
       }`,
       {
-        headers: config.headers,
+        hasAuth: Boolean(config.headers.Authorization),
         data: config.data ? '[DATA]' : null,
       },
     );
@@ -40,7 +58,7 @@ apiClient.interceptors.request.use(
 
 apiClient.interceptors.response.use(
   response => {
-    console.log(`[API Response] ${response.status}`, response.data);
+    console.log(`[API Response] ${response.status}`, summarizeResponse(response.data));
     return response;
   },
   async error => {
@@ -53,6 +71,8 @@ apiClient.interceptors.response.use(
 
     if (error.response?.status === 401) {
       await StorageService.removeItem('authToken');
+      await StorageService.removeItem('refreshToken');
+      await StorageService.removeItem('user_data');
       await StorageService.removeItem('user');
     }
 
@@ -128,6 +148,10 @@ const ApiService = {
     return ApiService.post(API_ENDPOINTS.AUTH.LOGIN_USER, data);
   },
 
+  async GOOGLE_LOGIN(data) {
+    return ApiService.post(API_ENDPOINTS.AUTH.GOOGLE_LOGIN, data);
+  },
+
   async VERIFY_SIGN_UP_USER_EMAIL(data) {
     return ApiService.post(API_ENDPOINTS.AUTH.VERIFY_SIGN_UP_USER_EMAIL, data);
   },
@@ -155,26 +179,8 @@ const ApiService = {
     return ApiService.get(`${API_ENDPOINTS.PRODUCTS.GET_SINGLE_PRODUCT}${id}`);
   },
 
-  async GET_SINGLE_PRODUCT_DETAILS(id) {
-    return ApiService.get(
-      `${API_ENDPOINTS.PRODUCTS.GET_SINGLE_PRODUCT_DETAILS}${id}`,
-    );
-  },
-
-  async GET_PRODUCT_BY_SLUG(slug) {
-    return ApiService.get(
-      `${API_ENDPOINTS.PRODUCTS.GET_PRODUCT_BY_SLUG}${slug}`,
-    );
-  },
-
-  async GET_RELATED_PRODUCT_DETAILS_BY_ID(id) {
-    return ApiService.get(
-      `${API_ENDPOINTS.PRODUCTS.GET_RELATED_PRODUCT_DETAILS_BY_ID}${id}`,
-    );
-  },
-
-  async SEARCH_PRODUCT(data) {
-    return ApiService.post(API_ENDPOINTS.PRODUCTS.SEARCH_PRODUCT, data);
+  async SEARCH_PRODUCT(params) {
+    return ApiService.get(API_ENDPOINTS.PRODUCTS.SEARCH_PRODUCT, { params });
   },
 
   async HOME_PRODUCTS_SEARCH(data) {
@@ -184,10 +190,6 @@ const ApiService = {
   // CATEGORIES
   async GET_ALL_CATEGORIES() {
     return ApiService.get(API_ENDPOINTS.CATEGORIES.GET_ALL_CATEGORIES);
-  },
-
-  async GET_CATEGORIES_IMAGES() {
-    return ApiService.get(API_ENDPOINTS.CATEGORIES.GET_CATEGORIES_IMAGES);
   },
 
   // CART
@@ -237,12 +239,16 @@ const ApiService = {
     return ApiService.post(API_ENDPOINTS.ORDERS.PLACE_ORDER, data);
   },
 
-    async UPDATE_PAYMENT_STATUS(data) {
+  async UPDATE_PAYMENT_STATUS(data) {
     return ApiService.put(API_ENDPOINTS.ORDERS.UPDATE_PAYMENT_STATUS, data);
   },
 
   async GET_ALL_ORDERS(userId) {
     return ApiService.get(`${API_ENDPOINTS.ORDERS.GET_ALL_ORDERS}${userId}`);
+  },
+
+  async GET_ORDER_BY_ID(id) {
+    return ApiService.get(`${API_ENDPOINTS.ORDERS.GET_ORDER_BY_ID}${id}`);
   },
 
   // USER
@@ -254,6 +260,15 @@ const ApiService = {
     return ApiService.get(
       `${API_ENDPOINTS.USER.GET_SPECIFIC_USER_DETAILS}${id}`,
     );
+  },
+
+  // PRIVACY PREFERENCES
+  async GET_PRIVACY_PREFERENCES() {
+    return ApiService.get(API_ENDPOINTS.USER.GET_PRIVACY_PREFERENCES);
+  },
+
+  async UPDATE_PRIVACY_PREFERENCES(data) {
+    return ApiService.put(API_ENDPOINTS.USER.UPDATE_PRIVACY_PREFERENCES, data);
   },
 
   // COUPONS
@@ -288,6 +303,36 @@ const ApiService = {
   // Notify Button
   async NOTIFY_PRODUCT(data) {
     return ApiService.post(API_ENDPOINTS.PRODUCTS.NOTIFY_PRODUCT, data);
+  },
+
+  // Contact/Report Form
+  async SUBMIT_REPORT(data) {
+    return ApiService.post(API_ENDPOINTS.CONTACT.CREATE_CONTACT, data);
+  },
+
+  // NOTIFICATIONS
+  async GET_NOTIFICATIONS(params) {
+    return ApiService.get(API_ENDPOINTS.NOTIFICATIONS.GET_FEED, { params });
+  },
+
+  async GET_NOTIFICATION_UNREAD_COUNT() {
+    return ApiService.get(API_ENDPOINTS.NOTIFICATIONS.UNREAD_COUNT);
+  },
+
+  async MARK_NOTIFICATION_READ(id) {
+    return ApiService.put(`${API_ENDPOINTS.NOTIFICATIONS.MARK_READ}${id}/read`);
+  },
+
+  async MARK_ALL_NOTIFICATIONS_READ() {
+    return ApiService.put(API_ENDPOINTS.NOTIFICATIONS.MARK_ALL_READ);
+  },
+
+  async REGISTER_DEVICE(data) {
+    return ApiService.post(API_ENDPOINTS.NOTIFICATIONS.REGISTER_DEVICE, data);
+  },
+
+  async UNREGISTER_DEVICE(data) {
+    return ApiService.post(API_ENDPOINTS.NOTIFICATIONS.UNREGISTER_DEVICE, data);
   },
 
   _handleError(error) {

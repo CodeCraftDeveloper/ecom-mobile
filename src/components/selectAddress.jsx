@@ -1024,6 +1024,7 @@ const OrderPlace = async () => {
     // STEP 10: NAVIGATE TO SUCCESS
     navigation.navigate('SuccessPage', {
       id: user?._id,
+      orderObjectId: dbOrderObjectId,
       orderId: dbOrderId,
       paymentId: paymentResult?.razorpay_payment_id,
     });
@@ -1109,7 +1110,7 @@ const OrderPlace = async () => {
                       </View>
                       <View style={{ width: '60%' }}>
                         <Text style={styles.itemName}>
-                          {item?.product?.name} {item?.product?.slug} {'\n'}
+                          {item?.product?.name} {'\n'}
                           {item?.quantity} x {item?.price}
                         </Text>
                       </View>

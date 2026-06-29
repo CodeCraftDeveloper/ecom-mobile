@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Colors from '../../utils/Colors';
 import InternalHeader from '../Header/InternalHeader';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
@@ -17,12 +17,13 @@ import {
   textScale,
 } from '../../utils/responsiveSize';
 import FontFamily from '../../utils/FontFamily';
-import { showMessage } from 'react-native-flash-message';
 import WrapperContainer from '../../utils/WrapperContainer';
 import { showSuccessMessage } from '../../utils/HelperFunction';
+import Feather from 'react-native-vector-icons/Feather';
 
-const shippingDetails = ({ route }) => {
-  const { routeName, cartProducts, user, discountedAmount ,couponCode} = route.params;
+const ShippingDetails = ({ route }) => {
+  const { routeName, cartProducts, user, discountedAmount, couponCode } =
+    route.params;
   console.log(routeName, 'line 25');
   // console.log(cartProducts,"line 31");
   console.log(user, 'Line 32');
@@ -31,24 +32,14 @@ const shippingDetails = ({ route }) => {
   const [userAddress, setUserAddress] = useState([]);
   const [loading, setLoading] = useState(true);
   const isFocused = useIsFocused();
-  useEffect(() => {
-    fetchSpecificUser(user?._id);
-  }, [isFocused]);
 
-  const handleUpdateAddress = selectedAddress => {
-    navigation.navigate('AddAddress', {
-      addressData: selectedAddress,
-      isUpdating: true,
-    });
-  };
+  const fetchSpecificUser = useCallback(async id => {
+    if (!id) {
+      setLoading(false);
+      setUserAddress([]);
+      return;
+    }
 
-  const handleAddAddress = () => {
-    navigation.navigate('AddAddress', {
-      isUpdating: false,
-    });
-  };
-
-  const fetchSpecificUser = async id => {
     setLoading(true);
     const response = await ApiService.GET_SPECIFIC_USER_DETAILS(id);
     // console.log(response, "Line 30");
@@ -60,21 +51,26 @@ const shippingDetails = ({ route }) => {
       Alert.alert('Error', 'Something went wrong');
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleRemove = async (item,index )=> {
-    console.log(item,"item")
-    console.log("Clicked on the Remove Button", index);
+  useEffect(() => {
+    fetchSpecificUser(user?._id);
+  }, [fetchSpecificUser, isFocused, user?._id]);
+
+  const handleRemove = async (item, index) => {
+    console.log(item, 'item');
+    console.log('Clicked on the Remove Button', index);
     try {
       const data = {
         id: user?._id,
-         contact_address: []
-        // addressIndex: index,
+        contact_address: userAddress.filter(
+          (_, addressIndex) => addressIndex !== index,
+        ),
       };
-      console.log(data, "Line 70");
+      console.log(data, 'Line 70');
       const response = await ApiService.REMOVE_ADDRESS(data);
       if (response?.success === true) {
-        showSuccessMessage("Address deleted Successfully")
+        showSuccessMessage('Address deleted Successfully');
         fetchSpecificUser(user?._id);
       } else {
         Alert.alert('Error', 'Unable to remove the Address');
@@ -90,13 +86,17 @@ const shippingDetails = ({ route }) => {
       cartProducts: cartProducts,
       user: user,
       discountedAmount: discountedAmount,
-      couponCode:couponCode
+      couponCode: couponCode,
     });
   };
 
   const handleAddAddress2 = async () => {
     console.log('Clicked on the Add Address', user?._id);
-    navigation.navigate('AddAddress', { id: user?._id });
+    navigation.navigate('AddAddress', {
+      id: user?._id,
+      isUpdating: false,
+      existingAddresses: userAddress,
+    });
     // const data = {
     //   id:user?._id,
     //   newAddress:{
@@ -122,10 +122,11 @@ const shippingDetails = ({ route }) => {
       addressData: item,
       id: user?._id,
       index: index,
+      existingAddresses: userAddress,
     });
   };
   const displayAddressCard = ({ item, index }) => {
-    console.log(item,"Line 136")
+    console.log(item, 'Line 136');
     return (
       <View style={styles.selectAddressCard} key={index}>
         <View style={styles.innerView}>
@@ -140,7 +141,7 @@ const shippingDetails = ({ route }) => {
             {routeName === 'Billing Address' && (
               <>
                 {/* <Text style={styles.editText}>|</Text> */}
-                <TouchableOpacity onPress={() => handleRemove(item,index)}>
+                <TouchableOpacity onPress={() => handleRemove(item, index)}>
                   <Text style={styles.editText}>Remove</Text>
                 </TouchableOpacity>
               </>
@@ -151,7 +152,8 @@ const shippingDetails = ({ route }) => {
         <View style={styles.view}>
           <Text style={styles.selectText}>Address:</Text>
           <Text style={styles.selectText1}>
-            {item?.address + item?.landmark || 'N/A'}
+            {[item?.address, item?.landmark].filter(Boolean).join(', ') ||
+              'N/A'}
           </Text>
         </View>
         <View style={styles.view}>
@@ -197,12 +199,27 @@ const shippingDetails = ({ route }) => {
       <View style={styles.main}>
         <InternalHeader title={'Shipping Details'} />
         <View style={styles.scrollView}>
+          <View style={styles.topActionContainer}>
+            <TouchableOpacity
+              onPress={handleAddAddress2}
+              activeOpacity={0.9}
+              style={styles.topAddButton}
+            >
+              <Feather
+                name="plus"
+                size={textScale(18)}
+                color={Colors.white}
+              />
+              <Text style={styles.buttonText}>Add Address</Text>
+            </TouchableOpacity>
+          </View>
           <View style={{ flex: 1 }}>
             {userAddress?.length > 0 ? (
               <FlatList
                 data={userAddress}
                 renderItem={displayAddressCard}
-                keyExtractor={index => index}
+                keyExtractor={(_, index) => String(index)}
+                contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
               />
             ) : (
@@ -211,24 +228,22 @@ const shippingDetails = ({ route }) => {
               </View>
             )}
           </View>
-          {routeName === 'Billing Address' && (
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                onPress={handleAddAddress2}
-                activeOpacity={0.9}
-                style={styles.button}
-              >
-                <Text style={styles.buttonText}>Add Address</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              onPress={handleAddAddress2}
+              activeOpacity={0.9}
+              style={styles.button}
+            >
+              <Text style={styles.buttonText}>Add Address</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </WrapperContainer>
   );
 };
 
-export default shippingDetails;
+export default ShippingDetails;
 
 const styles = StyleSheet.create({
   main: {
@@ -237,6 +252,25 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  topActionContainer: {
+    width: '95%',
+    alignSelf: 'center',
+    alignItems: 'flex-end',
+    paddingTop: moderateVerticalScale(10),
+  },
+  topAddButton: {
+    backgroundColor: Colors.forgetPassword,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: moderateScale(6),
+    paddingHorizontal: moderateScale(14),
+    paddingVertical: moderateVerticalScale(9),
+    borderRadius: moderateScale(8),
+  },
+  listContent: {
+    paddingBottom: moderateVerticalScale(90),
   },
   buttonContainer: {
     width: moderateScale(300),

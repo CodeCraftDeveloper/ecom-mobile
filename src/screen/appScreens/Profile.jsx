@@ -203,24 +203,6 @@ const Profile = route => {
         </View>
         {/* Account Related Information */}
         <View style={styles.lowerView}>
-          {/* Personal Details */}
-          <TouchableOpacity
-            style={[styles.listItemHolder, { opacity: user ? 1 : 0.3 }]}
-            disabled={!user}
-            onPress={() => navigation.push('PersonalDetails', { user: user })}
-          >
-            <View style={styles.iconContainer}>
-              <UserIcon size={textScale(25)} color={Colors.black} />
-            </View>
-            <View style={styles.textHolder}>
-              <Text style={styles.listNameText}>Personal Details</Text>
-            </View>
-            <View
-              style={[styles.iconContainer, { backgroundColor: Colors.white }]}
-            >
-              <ChevronRightIcon size={textScale(20)} color={Colors.black} />
-            </View>
-          </TouchableOpacity>
           {/* My Order*/}
           <TouchableOpacity
             style={[styles.listItemHolder, { opacity: user ? 1 : 0.3 }]}
@@ -257,22 +239,16 @@ const Profile = route => {
               <ChevronRightIcon size={textScale(20)} color={Colors.black} />
             </View>
           </TouchableOpacity>
-          {/* Shipping Address */}
+          {/* Settings */}
           <TouchableOpacity
-            style={[styles.listItemHolder, { opacity: user ? 1 : 0.3 }]}
-            disabled={!user}
-            onPress={() =>
-              navigation.navigate('Shipping Address', {
-                routeName: 'Profile Address',
-                user: user,
-              })
-            }
+            style={styles.listItemHolder}
+            onPress={() => navigation.navigate('Settings')}
           >
             <View style={styles.iconContainer}>
-              <TruckIcon size={textScale(25)} color={Colors.black} />
+              <Feather name="settings" size={textScale(25)} color={Colors.black} />
             </View>
             <View style={styles.textHolder}>
-              <Text style={styles.listNameText}>Shipping Address</Text>
+              <Text style={styles.listNameText}>Settings</Text>
             </View>
             <View
               style={[styles.iconContainer, { backgroundColor: Colors.white }]}
@@ -281,21 +257,6 @@ const Profile = route => {
             </View>
           </TouchableOpacity>
         </View>
-        {/* Delete Account */}
-        {user && (
-        <TouchableOpacity
-          style={[styles.deleteAccountHolder, { opacity: user ? 1 : 0.3 }]}
-          disabled={!user}
-          onPress={confirmDeleteAccount}
-        >
-          <View style={[styles.iconContainer, { backgroundColor: Colors.red }]}> 
-            <Feather name="trash-2" size={textScale(25)} color={Colors.white} />
-          </View>
-          <View style={styles.textHolder}>
-            <Text style={[styles.listNameText, { color: Colors.red }]}>Delete Account</Text>
-          </View>
-        </TouchableOpacity>
-        )}
         {/* Logout Button Sections */}
         <View style={styles.logoutButtonView}>
           <TouchableOpacity

@@ -28,11 +28,13 @@ import { showMessage } from 'react-native-flash-message';
 import WrapperContainer from '../../utils/WrapperContainer';
 import StorageService from '../../utils/storageService';
 import { parseStoredUser, showErrorMessage } from '../../utils/HelperFunction';
+import GuestCartService from '../../utils/GuestCartService';
 
 export default function Cart() {
   const navigation = useNavigation();
   const [showCheckoutScreen, setShowCheckoutScreen] = useState(false);
   const [user, setUser] = useState(null);
+  const [isGuest, setIsGuest] = useState(false);
   const [cartProducts, setCartProducts] = useState([]);
   const [showClearCart, setShowClearCart] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -51,6 +53,7 @@ export default function Cart() {
   useEffect(() => {
     fetchLoginData();
     setShowCheckoutScreen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFocused, navigation]);
 
   const fetchLoginData = async () => {
@@ -59,13 +62,28 @@ export default function Cart() {
       const user_data_string = await StorageService.getItem('user_data');
       const userData = parseStoredUser(user_data_string);
       if (userData && userData?._id) {
-        getProductsInCart(userData._id);
+        setIsGuest(false);
         setUser(userData);
+        getProductsInCart(userData._id);
+      } else {
+        setIsGuest(true);
+        setUser(null);
+        await loadGuestCart();
       }
 
       setLoading(false);
     } catch (e) {
       console.log('Error fetching data:', e);
+    }
+  };
+
+  const loadGuestCart = async () => {
+    try {
+      const guestCart = await GuestCartService.getCart();
+      setCartProducts(guestCart);
+      setShowClearCart(guestCart.length > 0);
+    } catch (e) {
+      console.log('Error loading guest cart:', e);
     }
   };
 
@@ -92,6 +110,13 @@ export default function Cart() {
   }
 
   const emptyCart = async userId => {
+    if (isGuest) {
+      await GuestCartService.clear();
+      setCartProducts([]);
+      DeviceEventEmitter.emit('cartUpdated');
+      Alert.alert('Cart', 'Your cart is empty!!', [{ text: 'OK' }]);
+      return;
+    }
     let data = {
       id: userId,
     };
@@ -108,9 +133,20 @@ export default function Cart() {
     }
   };
 
-  const removeItemFromCart = async productId => {
+  const removeItemFromCart = async item => {
+    if (isGuest) {
+      await GuestCartService.removeItem(item?.product?._id, item?.packSize);
+      await loadGuestCart();
+      DeviceEventEmitter.emit('cartUpdated');
+      showMessage({
+        type: 'success',
+        icon: 'success',
+        message: 'Item successfully removed',
+      });
+      return;
+    }
     let data = {
-      product: productId?._id,
+      product: item?.product?._id,
       user: user?._id,
     };
     try {
@@ -138,6 +174,17 @@ export default function Cart() {
     }
   };
   const handleCheckOut = async () => {
+    if (isGuest) {
+      Alert.alert(
+        'Login required',
+        'Please log in to continue to checkout. Your cart items will be saved.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Login', onPress: () => navigation.navigate('Login') },
+        ],
+      );
+      return;
+    }
     console.log('Clicked on the Process to checkout');
     // navigation.navigate("Checkout", {
     //   cartProducts: cartProducts,
@@ -237,7 +284,10 @@ export default function Cart() {
           heart={'Cart'}
           handleClearCart={() => emptyCart(user?._id)}
         />
-        <ScrollView style={styles.container}>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={{ paddingBottom: moderateVerticalScale(80) }}
+        >
           <View style={styles.content}>
             <>
               {cartProducts.length > 0 ? (
@@ -259,7 +309,7 @@ export default function Cart() {
                           </View>
                           <View style={{ width: '50%' }}>
                             <Text style={styles.itemName}>
-                              {item?.product?.name} {item?.product?.slug}
+                              {item?.product?.name}
                               {''}({item?.product?.size_inch} inches)
                             </Text>
                             {/* Count Holder */}
@@ -274,9 +324,7 @@ export default function Cart() {
                               </Text>
 
                               <TouchableOpacity
-                                onPress={() =>
-                                  removeItemFromCart(item?.product)
-                                }
+                                onPress={() => removeItemFromCart(item)}
                               >
                                 <Text style={styles.deleteText}>Delete</Text>
                               </TouchableOpacity>

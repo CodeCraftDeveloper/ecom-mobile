@@ -44,6 +44,214 @@ import {
 } from '../utils/HelperFunction';
 import PendingCartService from '../utils/PendingCartService';
 
+// ─── Category constants (mirrors web Info.tsx) ───
+const PACKPRO_TAPE_CATEGORY_ID = "6557df64301ec4f2f4266141";
+const CARRY_BAG_CATEGORY_IDS = new Set([
+  "6557df71301ec4f2f4266145",
+  "689d73214687bb4e437542e0",
+]);
+const FOOD_WRAPPING_CATEGORY_IDS = new Set([
+  "69dcb22e733b8ba056529a9f",
+  "679ca70f2833ca433fa0aa9c",
+]);
+const LABEL_CATEGORY_ID = "6557deb6301ec4f2f4266135";
+const POLY_BAG_CATEGORY_ID = "6557df4f301ec4f2f426613d";
+const PAPER_BAG_CATEGORY_ID = "6557df46301ec4f2f4266139";
+const CORRUGATED_BOX_CATEGORY_ID = "6557deab301ec4f2f4266131";
+
+const normalizeId = (value) => {
+  if (!value) return "";
+  if (typeof value === "object" && value._id) return String(value._id);
+  return String(value);
+};
+
+const hasValue = (value) =>
+  value !== undefined && value !== null && String(value).trim() !== "";
+
+const formatGst = (value, fallback = "Not Available") => {
+  if (!hasValue(value)) return fallback;
+  if (typeof value === "number") {
+    const percent = value <= 1 ? value * 100 : value;
+    return `${Number.isInteger(percent) ? percent : percent.toFixed(2)}%`;
+  }
+  const text = String(value).trim();
+  if (text.includes("%")) return text;
+  const numericValue = Number(text);
+  if (Number.isFinite(numericValue)) {
+    const percent = numericValue <= 1 ? numericValue * 100 : numericValue;
+    return `${Number.isInteger(percent) ? percent : percent.toFixed(2)}%`;
+  }
+  return text;
+};
+
+const getProductKind = (product) => {
+  const categoryId = normalizeId(product?.category);
+  const categoryName = typeof product?.category === "object" ? product?.category?.name || "" : "";
+  const categorySlug = typeof product?.category === "object" ? product?.category?.slug || "" : "";
+  const searchText = [product?.name, product?.slug, product?.model, categoryName, categorySlug]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (categoryId === PACKPRO_TAPE_CATEGORY_ID || /tape/i.test(searchText)) return "tape";
+  if (CARRY_BAG_CATEGORY_IDS.has(categoryId) || /carry.*bag/i.test(searchText)) return "carry-bag";
+  if (FOOD_WRAPPING_CATEGORY_IDS.has(categoryId) || /food.*wrapping|foil/.test(searchText)) return "foil-paper";
+  if (categoryId === LABEL_CATEGORY_ID || /label/i.test(searchText)) return "label";
+  if (categoryId === POLY_BAG_CATEGORY_ID || /poly.*bag/i.test(searchText)) return "polybag";
+  if (categoryId === PAPER_BAG_CATEGORY_ID || /paper.*bag/i.test(searchText)) return "paperbag";
+  if (categoryId === CORRUGATED_BOX_CATEGORY_ID || categoryId === "6926d7c0d53f3a772c6f08af" || /corrugated/i.test(searchText)) return "corrugated";
+  return "generic";
+};
+
+const FIELD_VISIBILITY_KEYS = {
+  sectionQuickOverview: "section:quick_overview",
+  sectionSpecifications: "section:specifications",
+  sectionProductDetails: "section:product_details",
+  aboutItem: "field:about_item",
+  noteGst: "note:gst",
+  noteDelivery: "note:delivery",
+  badgeFreeDelivery: "badge:free_delivery",
+  badgeSecureTransaction: "badge:secure_transaction",
+  badgeNoReturns: "badge:no_returns",
+  badgeRecyclable: "badge:recyclable",
+  priceMrp: "price:mrp",
+  priceSavings: "price:savings",
+  pricePackWeight: "price:pack_weight",
+};
+
+const isFieldVisible = (product, key) => {
+  const asVisibilityMap = (value) =>
+    value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+
+  const productMap = asVisibilityMap(product?.field_visibility);
+  if (productMap[key] !== undefined) return productMap[key] !== false;
+
+  const category = product?.category;
+  const categoryMap = asVisibilityMap(
+    category && typeof category === 'object'
+      ? category.field_visibility
+      : undefined,
+  );
+  if (categoryMap[key] !== undefined) return categoryMap[key] !== false;
+
+  return true;
+};
+
+const SPEC_FIELD_KEYS = [
+  'length', 'width', 'height', 'length_inch', 'length_mm', 'breadth_inch',
+  'breadth_mm', 'height_inch', 'height_mm', 'size_inch', 'size_mm', 'flap_mm',
+  'thickness', 'thickness_micron', 'gusset', 'print', 'label_in_roll',
+  'core_size', 'pouch_weight', 'adhesive', 'material', 'color', 'colour',
+  'weight', 'size'
+];
+
+const getProductSpecification = (product) => {
+  const source = product || {};
+  const normalized = source.specification && typeof source.specification === 'object' ? source.specification : {};
+  const attributes = normalized.attributes && typeof normalized.attributes === 'object' ? normalized.attributes : {};
+  const specification = { ...attributes, ...normalized };
+
+  delete specification._id;
+  delete specification.product;
+  delete specification.createdAt;
+  delete specification.updatedAt;
+  delete specification.attributes;
+
+  SPEC_FIELD_KEYS.forEach((key) => {
+    if (!hasValue(specification[key]) && hasValue(source[key])) {
+      specification[key] = source[key];
+    }
+  });
+
+  return specification;
+};
+
+const getMobileSpecifications = (product) => {
+  const specification = getProductSpecification(product);
+  const HIDDEN_KEYS = new Set(['_id', 'product', 'createdAt', 'updatedAt', '__v']);
+
+  const specSchema = product?.category?.spec_schema || [];
+  const schemaByKey = new Map(specSchema.map((field) => [field.key, field]));
+  const schemaOrder = new Map(specSchema.map((field, index) => [field.key, index]));
+
+  const labelFromKey = (key) =>
+    key
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+
+  const labelFor = (key) => {
+    const def = schemaByKey.get(key);
+    if (!def) return labelFromKey(key);
+    const label = def.label || labelFromKey(key);
+    return def.unit ? `${label} (${def.unit})` : label;
+  };
+
+  const orderFor = (key, encounterIndex) =>
+    schemaOrder.has(key) ? schemaOrder.get(key) : specSchema.length + encounterIndex;
+
+  const formatValue = (value) => {
+    if (typeof value === 'boolean') return value ? "Yes" : "No";
+    return String(value);
+  };
+
+  return Object.entries(specification)
+    .filter(([key, value]) => !HIDDEN_KEYS.has(key) && hasValue(value))
+    .filter(([key]) => isFieldVisible(product, `spec:${key}`))
+    .map(([key, value], encounterIndex) => ({
+      key,
+      label: labelFor(key),
+      value: formatValue(value),
+      order: orderFor(key, encounterIndex),
+    }))
+    .sort((a, b) => a.order - b.order);
+};
+
+const getOverviewFields = (product, packSize, weightValue) => {
+  if (!product) return [];
+
+  const adminManagedFields = Array.isArray(product?.overview_fields)
+    ? product.overview_fields
+        .map((field) => ({
+          label: field?.label,
+          value: field?.value,
+        }))
+        .filter((field) => field?.label && hasValue(field?.value))
+    : [];
+
+  if (adminManagedFields.length > 0) return adminManagedFields;
+
+  const productKind = getProductKind(product);
+
+  const brandName = product?.brand?.name || "";
+  const prodName = product?.name || "";
+  const prodModel = product?.model || "";
+  const fullTitle = [brandName, prodName, prodModel].filter(Boolean).join(" ");
+
+  const formatBoolean = (val) => {
+    if (val === true || val === "true" || val === "Yes") return "Yes";
+    return "No";
+  };
+
+  const commonFields = [
+    { label: "Brand", value: brandName || "Not Available" },
+    { label: "Model", value: prodModel || "Not Available" },
+    { label: "Product Title", value: fullTitle || "Not Available" },
+    { label: "Dimension (inch)", value: product?.size_inch || "Not Available" },
+    { label: "Dimension (mm)", value: product?.size_mm || "Not Available" },
+    { label: "HSN Code", value: product?.hsn_code || "Not Available" },
+    { label: "GST", value: formatGst(product?.gst) },
+    { label: "Pack Size", value: hasValue(packSize) ? packSize : "Not Available" },
+    { label: "Weight", value: hasValue(weightValue) ? `${weightValue} kg` : "Not Available" },
+    { label: "Colour", value: product?.color || "Not Available" },
+    { label: "Material", value: product?.material || "Not Available" },
+    { label: "Recyclable", value: product?.recyclable !== undefined ? formatBoolean(product?.recyclable) : "Not Available" },
+    { label: "Biodegradable", value: product?.biodegradable !== undefined ? formatBoolean(product?.biodegradable) : "Not Available" },
+    { label: "Delivery Time", value: product?.delivery_time || "Not Available" },
+  ].filter((field) => field.value !== "Not Available");
+
+  return commonFields;
+};
+
 const ProductDetails = ({ route }) => {
   const [webViewHeight, setWebViewHeight] = useState(100);
   const { item } = route.params;
@@ -51,7 +259,6 @@ const ProductDetails = ({ route }) => {
   console.log(item, 'Line 31');
   const [buyItWithProduct, setBuyItWithProduct] = useState([]);
   const [count, setCount] = useState(1);
-  const [showDetails, setShowDetails] = useState('Description');
   const [showLoginPopup, setShowLoginPopup] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [webViewLoader, setWebViewLoader] = useState(true);
@@ -151,6 +358,7 @@ const ProductDetails = ({ route }) => {
         const pendingCount = route?.params?.pendingCount || 1;
         handleAddToCart(item, pendingCount);
       }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []),
   );
 
@@ -293,41 +501,14 @@ const ProductDetails = ({ route }) => {
 
   useEffect(() => {
     fetchSpecificProductAndStore();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const additionalInformationData = [
-    {
-      label: 'Size in Inches',
-      value: `${item?.size_inch ? item?.size_inch : 'N/A'}`,
-    },
-    { label: 'Size in mm', value: `${item?.size_mm ? item?.size_mm : 'N/A'}` },
-    { label: 'HSN Code', value: `${item?.hsn_code ? item?.hsn_code : 'N/A'}` },
-    { label: 'Color', value: `${item?.color ? item?.color : 'N/A'}` },
-    {
-      label: 'Breadth in inches',
-      value: `${item?.breadth_inch ? item?.breadth_inch : 'N/A'}`,
-    },
-    {
-      label: 'Breadth in mm',
-      value: `${item?.breadth_mm ? item?.breadth_mm : 'N/A'}`,
-    },
-    {
-      label: 'Height in inches',
-      value: `${item?.height_inch ? item?.height_inch : 'N/A'}`,
-    },
-    {
-      label: 'Height in mm',
-      value: `${item?.height_mm ? item?.height_mm : 'N/A'}`,
-    },
-    {
-      label: 'Length in inches',
-      value: `${item?.length_inch ? item?.length_inch : 'N/A'}`,
-    },
-    {
-      label: 'Length in mm',
-      value: `${item?.length_mm ? item?.length_mm : 'N/A'}`,
-    },
-  ];
+  const overviewFieldsData = getOverviewFields(
+    item,
+    number ? number : item?.priceList?.[0]?.number,
+    packWeight ? packWeight : item?.priceList?.[0]?.pack_weight,
+  );
 
   const handlePackSize = item => {
     console.log(item, 'Line 185');
@@ -445,8 +626,7 @@ const ProductDetails = ({ route }) => {
             <View style={styles.innerView}>
               <View style={{ marginVertical: moderateVerticalScale(10) }}>
                 <Text style={[styles.name, { textTransform: 'capitalize' }]}>
-                  {item?.name} {item?.slug} {item?.hsn_code} ({item?.size_inch})
-                  ({item?.priceList[0]?.number} Pcs)
+                  {item?.brand?.name ? `${item.brand.name} ` : ''}{item?.name} {item?.model || ''}
                 </Text>
               </View>
               {imageLoading && (
@@ -704,58 +884,83 @@ const ProductDetails = ({ route }) => {
               </TouchableOpacity>
             </View>
             <View style={styles.divider} />
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: moderateScale(10),
-                paddingBottom: moderateScale(10),
-              }}
-            >
-              <MaterialCommunityIcons
-                name="truck"
-                color={Colors.red}
-                size={moderateScale(30)}
-              />
-              <Text style={styles.dText}>
-                Delivery Within{' '}
-                {item?.delivery_time ? item?.delivery_time : '7 Working Days'}
-              </Text>
-            </View>
+            {/* GST and Delivery Notes */}
+            {(isFieldVisible(item, 'note:gst') || isFieldVisible(item, 'note:delivery')) && (
+              <View style={styles.notesContainer}>
+                {isFieldVisible(item, 'note:gst') && (
+                  <View style={styles.noteBox}>
+                    <Text style={styles.noteText}>Price is excluding GST</Text>
+                  </View>
+                )}
+                {isFieldVisible(item, 'note:delivery') && (
+                  <View style={styles.noteBox}>
+                    <MaterialCommunityIcons
+                      name="truck"
+                      color={Colors.red}
+                      size={moderateScale(24)}
+                    />
+                    <Text style={styles.noteText}>
+                      Delivery Within{' '}
+                      {item?.delivery_time ? item?.delivery_time : '7 Working Days'}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+
             {/* 4 Icons */}
-            <View
-              style={{
-                marginVertical: moderateVerticalScale(10),
-                flexDirection: 'row',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                justifyContent: 'space-evenly',
-                gap: moderateScale(10),
-              }}
-            >
-              {data.map(item => (
+            {(() => {
+              const visibleBadges = [
+                isFieldVisible(item, 'badge:free_delivery') && { id: 1, name: 'Free Delivery', image: ImagePath.delivery },
+                isFieldVisible(item, 'badge:secure_transaction') && { id: 2, name: 'Secured Transaction', image: ImagePath.secure },
+                isFieldVisible(item, 'badge:no_returns') && { id: 3, name: 'No Return', image: ImagePath.noReturn },
+                isFieldVisible(item, 'badge:recyclable') && { id: 4, name: '100% Recyclable', image: ImagePath.recycle },
+              ].filter(Boolean);
+
+              if (visibleBadges.length === 0) return null;
+
+              return (
                 <View
-                  key={item?.id}
                   style={{
-                    alignItems: 'center',
-                    gap: moderateVerticalScale(5),
+                    marginVertical: moderateVerticalScale(10),
+                    flexDirection: 'row',
+                    alignItems: 'flex-start',
+                    justifyContent: 'space-between',
+                    paddingHorizontal: moderateScale(10),
                   }}
                 >
-                  <Image
-                    source={item?.image}
-                    resizeMode="contain"
-                    style={{
-                      width: moderateScale(30),
-                      height: moderateScale(30),
-                    }}
-                  />
-                  <Text style={[styles.dText, { width: '80%' }]}>
-                    {item?.name}
-                  </Text>
+                  {visibleBadges.map(badge => (
+                    <View
+                      key={badge?.id}
+                      style={{
+                        alignItems: 'center',
+                        width: `${Math.floor(92 / visibleBadges.length)}%`,
+                        gap: moderateVerticalScale(5),
+                      }}
+                    >
+                      <Image
+                        source={badge?.image}
+                        resizeMode="contain"
+                        style={{
+                          width: moderateScale(24),
+                          height: moderateScale(24),
+                        }}
+                      />
+                      <Text
+                        style={{
+                          fontFamily: FontFamily.Montserrat_Medium,
+                          color: Colors.black,
+                          fontSize: textScale(9),
+                          textAlign: 'center',
+                        }}
+                      >
+                        {badge?.name}
+                      </Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </View>
+              );
+            })()}
             {/* Return Days */}
             {/* <View style={styles.returnHolder}>
             <View style={styles.innerView4}>
@@ -775,61 +980,74 @@ const ProductDetails = ({ route }) => {
           </View> */}
           </View>
           {/* Third Section */}
-          <View style={styles.firstSection}>
-            <View style={styles.descriptionView}>
-              <TouchableOpacity
-                style={[
-                  styles.touch,
-                  showDetails === 'Description' && styles.activeTab,
-                ]}
-                onPress={() => setShowDetails('Description')}
-              >
-                <Text style={styles.tableLabel}>Description</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.touch,
-                  showDetails === 'AdditionalInformation' && styles.activeTab,
-                ]}
-                onPress={() => setShowDetails('AdditionalInformation')}
-              >
-                <Text style={styles.tableLabel}>Additional Information</Text>
-              </TouchableOpacity>
-            </View>
-            {showDetails === 'Description' ? (
-              <View style={{ width: '95%', alignSelf: 'center' }}>
-                {item?.description ? (
-                  // <View style={{borderWidth:2,flex:1}}>
-                  <WebView
-                    source={{
-                      html: `<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body>${item?.description}</body></html>`,
-                    }}
-                    injectedJavaScript={webViewScript}
-                    onMessage={onWebViewMessage}
-                    style={{ height: webViewHeight }}
-                    originWhitelist={['*']}
-                  />
-                ) : (
+          {/* Third Section: Quick Overview, Specifications & Details */}
+          {(() => {
+            const showQuickOverview = isFieldVisible(item, 'section:quick_overview');
+            const showSpecifications = isFieldVisible(item, 'section:specifications');
+            const showProductDetails = isFieldVisible(item, 'section:product_details');
+            const specificationsData = getMobileSpecifications(item);
+
+            const hasDescription = Boolean(item?.description && String(item?.description).trim());
+            const hasAboutItem = Boolean(item?.aboutItem && String(item?.aboutItem).trim());
+
+            if (!showQuickOverview && !showSpecifications && !showProductDetails) return null;
+
+            return (
+              <View style={[styles.firstSection, { padding: moderateScale(15), gap: moderateVerticalScale(20) }]}>
+                {/* 1. Quick Overview */}
+                {showQuickOverview && overviewFieldsData.length > 0 && (
                   <View>
-                    <Text style={styles.nanText}>
-                      Description Not Available
-                    </Text>
+                    <Text style={styles.sectionHeading}>Quick Overview</Text>
+                    <View style={{ marginTop: moderateVerticalScale(5) }}>
+                      {overviewFieldsData.map((field, index) => (
+                        <View style={styles.tableRow} key={field.label}>
+                          <Text style={styles.productText}>{field.label}</Text>
+                          <Text style={styles.tableValue}>{field.value}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* 2. Specifications */}
+                {showSpecifications && specificationsData.length > 0 && (
+                  <View>
+                    <Text style={styles.sectionHeading}>Specifications</Text>
+                    <View style={{ marginTop: moderateVerticalScale(5) }}>
+                      {specificationsData.map((field, index) => (
+                        <View style={styles.tableRow} key={field.key}>
+                          <Text style={styles.productText}>{field.label}</Text>
+                          <Text style={styles.tableValue}>{field.value}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* 3. Product Details */}
+                {showProductDetails && (hasDescription || hasAboutItem) && (
+                  <View>
+                    <Text style={styles.sectionHeading}>Product Details</Text>
+                    <View style={{ marginTop: moderateVerticalScale(5) }}>
+                      {hasDescription ? (
+                        <WebView
+                          source={{
+                            html: `<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body>${item?.description}</body></html>`,
+                          }}
+                          injectedJavaScript={webViewScript}
+                          onMessage={onWebViewMessage}
+                          style={{ height: webViewHeight }}
+                          originWhitelist={['*']}
+                        />
+                      ) : (
+                        <Text style={styles.text2}>{item.aboutItem}</Text>
+                      )}
+                    </View>
                   </View>
                 )}
               </View>
-            ) : (
-              <View style={{ width: '95%', alignSelf: 'center' }}>
-                {additionalInformationData.map((item, index) => {
-                  return (
-                    <View style={styles.tableRow} key={item.label}>
-                      <Text style={styles.productText}>{item.label}</Text>
-                      <Text style={styles.tableValue}>{item.value}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-            )}
-          </View>
+            );
+          })()}
           {/* Buy with it Option */}
           {/* <View style={styles.relatedView}>
             <Text
@@ -1355,6 +1573,37 @@ const styles = StyleSheet.create({
     top: '50%',
     left: '50%',
     transform: [{ translateX: -15 }, { translateY: -15 }],
+  },
+  notesContainer: {
+    marginHorizontal: moderateScale(25),
+    marginVertical: moderateVerticalScale(10),
+    gap: moderateScale(10),
+  },
+  noteBox: {
+    borderWidth: 1,
+    borderColor: '#CCCCCC',
+    borderRadius: moderateScale(5),
+    padding: moderateScale(12),
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: moderateScale(10),
+    justifyContent: 'center',
+  },
+  noteText: {
+    color: Colors.black,
+    fontFamily: FontFamily.Montserrat_Medium,
+    fontSize: textScale(12),
+    textAlign: 'center',
+  },
+  sectionHeading: {
+    color: Colors.brandColor,
+    fontSize: textScale(16),
+    fontFamily: FontFamily.Montserrat_Bold,
+    borderBottomWidth: 2,
+    borderBottomColor: Colors.brandColor,
+    paddingBottom: moderateVerticalScale(5),
+    alignSelf: 'flex-start',
+    marginBottom: moderateVerticalScale(10),
   },
   relatedView: {
     borderWidth: 2,

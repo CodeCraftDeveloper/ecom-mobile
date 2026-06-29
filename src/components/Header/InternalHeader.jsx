@@ -13,6 +13,7 @@ import FontFamily from "../../utils/FontFamily";
 import ApiService from "../../service/APIService";
 import StorageService from "../../utils/storageService";
 import { parseStoredUser } from "../../utils/HelperFunction";
+import GuestCartService from "../../utils/GuestCartService";
 const InternalHeader = ({
   title,
   heart,
@@ -47,6 +48,9 @@ const InternalHeader = ({
       const response = await ApiService.GET_TOTAL_CART_COUNT(userData?._id);
       // console.log(response?.data?.count, "Line 24");
       setCartCount(response?.data?.count);
+    } else {
+      const guestCount = await GuestCartService.getCount();
+      setCartCount(guestCount);
     }
   };
 

@@ -1,47 +1,35 @@
+import React from 'react';
 import {
-  View,
-  Text,
   Modal,
   StyleSheet,
-  Dimensions,
+  Text,
   TouchableOpacity,
+  View,
 } from 'react-native';
-import React from 'react';
 import Colors from '../../utils/Colors';
-import { textScale, moderateScale } from '../../utils/responsiveSize';
-import { XMarkIcon } from 'react-native-heroicons/outline';
-import LottieView from 'lottie-react-native';
-
-const { width, height } = Dimensions.get('window');
+import { moderateScale, textScale } from '../../utils/responsiveSize';
 
 export default function SuccessPopup({
   showSuccessPopup,
   setShowSuccessPopup,
 }) {
   return (
-    <Modal transparent={true} visible={showSuccessPopup}>
+    <Modal transparent visible={Boolean(showSuccessPopup)} animationType="fade">
       <View style={styles.modalView}>
         <View style={styles.mainView}>
           <TouchableOpacity
+            activeOpacity={0.8}
             onPress={() => setShowSuccessPopup(false)}
             style={styles.closeIcon}
           >
-            <XMarkIcon size={20} color={Colors.forgetPassword} />
+            <Text style={styles.closeText}>X</Text>
           </TouchableOpacity>
 
-          {/* Animation */}
-          <View>
-            <LottieView
-              source={require('../../assets/images/Animation - 1712573495942.json')}
-              resizeMode="contain"
-              style={{ height: moderateScale(130), width: '90%' }}
-              autoPlay={true}
-              loop
-            />
-            <Text style={styles.heading}>Order Placed !!</Text>
-            <Text style={styles.subHeading}>Order Placed Successfully!!!</Text>
-            <View style={{ marginVertical: 20 }}></View>
+          <View style={styles.iconCircle}>
+            <Text style={styles.iconText}>OK</Text>
           </View>
+          <Text style={styles.heading}>Order Placed !!</Text>
+          <Text style={styles.subHeading}>Order Placed Successfully!!!</Text>
         </View>
       </View>
     </Modal>
@@ -51,48 +39,56 @@ export default function SuccessPopup({
 const styles = StyleSheet.create({
   modalView: {
     flex: 1,
-    position: 'absolute',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    height: height,
-    width: width,
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: moderateScale(20),
   },
   mainView: {
+    width: '100%',
+    maxWidth: moderateScale(300),
+    alignItems: 'center',
+    borderRadius: moderateScale(10),
     backgroundColor: Colors.white,
-    height: moderateScale(300),
-    width: moderateScale(300),
-    borderRadius: 10,
+    paddingHorizontal: moderateScale(18),
+    paddingVertical: moderateScale(24),
   },
   closeIcon: {
-    alignSelf: 'flex-end',
-    marginTop: -10,
-    // marginHorizontal:moderateScale(),
+    position: 'absolute',
+    right: moderateScale(10),
+    top: moderateScale(10),
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: moderateScale(28),
+    height: moderateScale(28),
+    borderRadius: moderateScale(14),
     backgroundColor: Colors.backGround_grey,
-    padding: 5,
-    borderRadius: 50,
   },
-  confirmationHolder: {
-    width: '80%',
-    height: 'auto',
-    padding: moderateScale(10),
-    borderRadius: moderateScale(10),
-    // elevation: moderateScale(10),
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowOffset: {
-      width: 0,
-      height: moderateScale(2),
-    },
-    shadowRadius: moderateScale(3),
-    backgroundColor: Colors.white,
+  closeText: {
+    color: Colors.forgetPassword,
+    fontSize: textScale(12),
+    fontWeight: '700',
+  },
+  iconCircle: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: moderateScale(76),
+    height: moderateScale(76),
+    borderRadius: moderateScale(38),
+    backgroundColor: Colors.green,
+    marginBottom: moderateScale(16),
+  },
+  iconText: {
+    color: Colors.white,
+    fontSize: textScale(22),
+    fontWeight: '700',
   },
   heading: {
+    color: Colors.black,
     fontSize: textScale(18),
     fontWeight: '600',
-    color: Colors.black,
-    textAlign: 'center',
     marginVertical: moderateScale(10),
+    textAlign: 'center',
   },
   subHeading: {
     color: 'gray',
